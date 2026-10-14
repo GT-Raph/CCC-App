@@ -1,54 +1,75 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
+# Secrets: never commit these ----------------------------------------------
+# .env holds the Supabase URL and key and the Google Maps key; share
+# .env.example instead. Edge Function secrets live in Supabase, not here.
+.env
+.env.*
+!.env.example
+supabase/.env
+supabase/functions/.env
+supabase/functions/.env.*
+
+# Signing keys and certificates (Android rules also in android/.gitignore)
+android/key.properties
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+
+# Build output ----------------------------------------------------------------
+/build/
+/coverage/
+/android/app/debug
+/android/app/profile
+/android/app/release
+*.apk
+*.aab
+*.ipa
+app.*.symbols
+app.*.map.json
+
+# Flutter / Dart / Pub ---------------------------------------------------------
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
 migrate_working_dir/
 
-# IntelliJ related
+# Golden-test failure images
+test/failures/
+**/failures/*.png
+
+# Supabase CLI and database tests ----------------------------------------------
+supabase/.temp/
+supabase/.branches/
+node_modules/
+
+# Editors and tools ------------------------------------------------------------
 *.iml
 *.ipr
 *.iws
 .idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# .vscode/ holds shared launch settings; uncomment to keep it out.
 #.vscode/
+.atom/
+.history
+*.swp
+.playwright-cli/
+.qodo/
+graphify-out/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Local environment configuration
-.env
-
-supabase/functions/.env
-supabase/functions/.env.*
-
-# Database test dependencies
-supabase/tests/node_modules/
+# Operating system and misc ----------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.class
+*.log
+*.pyc
+.build/
+.buildlog/
+.svn/
+.swiftpm/
