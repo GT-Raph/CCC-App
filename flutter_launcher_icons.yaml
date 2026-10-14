@@ -1,0 +1,15 @@
+# Generates the app icons from the church logo:
+#   dart run flutter_launcher_icons
+# The sources in assets/launcher/ are not bundled into the app.
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/launcher/icon.png"
+  # Android 8+: the logo on white, inside the launcher's circle or squircle.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/launcher/foreground.png"
+  # The foreground image already keeps the logo inside the safe zone.
+  adaptive_icon_foreground_inset: 0
+  # The App Store rejects icons with transparency.
+  remove_alpha_ios: true
+  min_sdk_android: 21

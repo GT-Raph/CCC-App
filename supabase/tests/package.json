@@ -1,0 +1,11 @@
+{
+  "name": "ccc-database-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node staff_rls_test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.6"
+  }
+}

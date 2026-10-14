@@ -1,0 +1,6 @@
+# Copy to key.properties and supply your church-owned upload keystore.
+# Use an absolute path with forward slashes, or a path relative to android/.
+storeFile=
+storePassword=
+keyAlias=
+keyPassword=
