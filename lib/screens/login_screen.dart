@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../navigation.dart';
@@ -76,73 +75,73 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
-      child: Scaffold(
-        resizeToAvoidBottomInset: false,
-        body: PhotoBackground(
-          child: AutofillGroup(
-            child: FullScreenColumn(
-              bottomGap: 14,
-              children: [
-                const SizedBox(height: 60),
-                const ChurchLogo(width: 117, color: CccColors.paper),
-                const Spacer(flex: 110),
-                const AuthTitle(
-                  title: 'Welcome Back',
-                  subtitle:
-                      "Log in to hear your branch's sermons and keep up with "
-                      'its events.',
-                ),
-                const Spacer(flex: 105),
-                AuthField(
-                  icon: FieldIcons.email,
-                  hint: 'Email',
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                ),
-                const SizedBox(height: 30),
-                AuthField(
-                  icon: FieldIcons.key,
-                  hint: 'Password',
-                  controller: passwordController,
-                  isPassword: true,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.password],
-                  onSubmitted: (_) => _submit(),
-                ),
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: _forgotPassword,
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 17 / 14,
-                        color: CccColors.ink,
-                      ),
-                    ),
+    final p = context.palette;
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: AutofillGroup(
+        child: FullScreenColumn(
+          topGap: 8,
+          bottomGap: 8,
+          children: [
+            const AuthBackButton(),
+            const SizedBox(height: 20),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: ChurchLogo(width: 52),
+            ),
+            const SizedBox(height: 24),
+            const AuthTitle(
+              title: 'Welcome back',
+              subtitle:
+                  "Log in to hear your branch's sermons and keep up with its "
+                  'events.',
+            ),
+            const SizedBox(height: 28),
+            AuthField(
+              label: 'Email',
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+            ),
+            const SizedBox(height: 16),
+            AuthField(
+              label: 'Password',
+              controller: passwordController,
+              isPassword: true,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.password],
+              onSubmitted: (_) => _submit(),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _forgotPassword,
+                style: TextButton.styleFrom(
+                  foregroundColor: p.accentText,
+                  minimumSize: const Size(48, 44),
+                  textStyle: const TextStyle(
+                    fontFamily: CccFonts.openSans,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 30),
-                CccButton(
-                  label: 'Login',
-                  onPressed: _submit,
-                  isLoading: isSubmitting,
-                ),
-                const Spacer(flex: 60),
-                AuthFooterLink(
-                  prompt: "Don't have an account?",
-                  action: 'Sign Up',
-                  onTap: () => CccNavigation.openSignUp(context, replace: true),
-                ),
-              ],
+                child: const Text('Forgot password?'),
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            CccButton(
+              label: 'Log in',
+              onPressed: _submit,
+              isLoading: isSubmitting,
+            ),
+            const Spacer(),
+            const SizedBox(height: 24),
+            AuthFooterLink(
+              prompt: 'New here?',
+              action: 'Create account',
+              onTap: () => CccNavigation.openSignUp(context, replace: true),
+            ),
+          ],
         ),
       ),
     );

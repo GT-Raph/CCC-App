@@ -198,7 +198,7 @@ void main() {
     expect(harness.savedForMember, isEmpty);
     expect(find.text('Walking in Faith'), findsOneWidget);
 
-    await tester.tap(find.text('Change'));
+    await tester.tap(find.byTooltip('Change branch'));
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
   });
@@ -232,15 +232,15 @@ void main() {
     await tester.enterText(find.byType(TextField).at(2), 'ama@example.com');
     await tester.enterText(find.byType(TextField).at(3), 'secret1');
     await tester.enterText(find.byType(TextField).at(4), 'secret1');
-    await tester.tap(find.text('Sign up'));
+    await tester.tap(find.text('Create account'));
     await tester.pump();
     expect(find.text('Choose your branch.'), findsOneWidget);
 
-    await tester.tap(find.text('Your Branch'));
+    await tester.tap(find.text('Select a branch'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('CCC Botwe'));
     await tester.pumpAndSettle();
-    expect(find.text('Your Branch'), findsNothing);
+    expect(find.text('Select a branch'), findsNothing);
     expect(find.text('CCC Botwe'), findsOneWidget);
   });
 }

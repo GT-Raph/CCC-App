@@ -85,24 +85,6 @@ flutter:
           weight: 700
         - asset: assets/fonts/OpenSans-ExtraBold.ttf
           weight: 800
-    - family: Montserrat
-      fonts:
-        - asset: assets/fonts/Montserrat-Regular.ttf
-        - asset: assets/fonts/Montserrat-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Montserrat-Bold.ttf
-          weight: 700
-    - family: PlayfairDisplay
-      fonts:
-        - asset: assets/fonts/PlayfairDisplay-Black.ttf
-          weight: 900
-    - family: Satisfy
-      fonts:
-        - asset: assets/fonts/Satisfy-Regular.ttf
-    - family: Lexend
-      fonts:
-        - asset: assets/fonts/Lexend-Light.ttf
-          weight: 300
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../theme/ccc_theme.dart';
 import 'ccc_widgets.dart';
 
-/// Horizontally scrolling row of 100 × 100 photos that runs off the card
-/// edge. Photos can be bundled assets or uploaded (https) ones.
+/// Horizontally scrolling row of square photos that runs off the card edge.
+/// Photos can be bundled assets or uploaded (https) ones.
 class ImageStrip extends StatelessWidget {
-  const ImageStrip({required this.images, this.leftPadding = 15, super.key});
+  const ImageStrip({required this.images, this.leftPadding = 16, super.key});
 
   final List<String> images;
   final double leftPadding;
@@ -14,18 +14,15 @@ class ImageStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 100,
+      height: 96,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.only(left: leftPadding, right: leftPadding),
+        padding: EdgeInsets.symmetric(horizontal: leftPadding),
         itemCount: images.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) => ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox.square(
-            dimension: 100,
-            child: CccPhoto(images[index]),
-          ),
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox.square(dimension: 96, child: CccPhoto(images[index])),
         ),
       ),
     );
@@ -44,16 +41,16 @@ class NetworkPhotoStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 100,
+      height: 96,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: photos.isEmpty ? 1 : photos.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) => ClipRRect(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(10),
           child: SizedBox.square(
-            dimension: 100,
+            dimension: 96,
             child: photos.isEmpty
                 ? const _PhotoPlaceholder()
                 : _WebPhotoTile(photo: photos[index]),
@@ -78,9 +75,8 @@ class _WebPhotoTile extends StatelessWidget {
         Image.network(
           photo.url,
           fit: BoxFit.cover,
-          loadingBuilder: (context, child, progress) => progress == null
-              ? child
-              : const ColoredBox(color: CccColors.background),
+          loadingBuilder: (context, child, progress) =>
+              progress == null ? child : const _PhotoPlaceholder(),
           errorBuilder: (_, _, _) => const _PhotoPlaceholder(),
         ),
         if (credit != null)
@@ -95,7 +91,7 @@ class _WebPhotoTile extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 8,
                 height: 1,
-                color: CccColors.paper,
+                color: Colors.white,
                 shadows: [Shadow(blurRadius: 3)],
               ),
             ),
@@ -105,14 +101,20 @@ class _WebPhotoTile extends StatelessWidget {
   }
 }
 
+/// While a photo loads, or when a branch has none.
 class _PhotoPlaceholder extends StatelessWidget {
   const _PhotoPlaceholder();
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: CccColors.background,
-      child: Icon(Icons.church, color: CccColors.inactive, size: 36),
+    final p = context.palette;
+    return ColoredBox(
+      color: p.surfaceAlt,
+      child: Icon(
+        Icons.church_outlined,
+        color: p.textMuted.withValues(alpha: 0.6),
+        size: 30,
+      ),
     );
   }
 }
@@ -130,48 +132,47 @@ class CccPhoto extends StatelessWidget {
     return Image.network(
       path,
       fit: fit,
-      loadingBuilder: (context, child, progress) =>
-          progress == null ? child : const _PhotoPlaceholder(),
-      errorBuilder: (_, _, _) => const _NoPhotos(),
+      loadingBuilder: (context, child, progress) => progress == null
+          ? child
+          : ColoredBox(color: context.palette.surfaceAlt),
+      errorBuilder: (_, _, _) => const _NoPhoto(),
     );
   }
 }
 
-/// Stands in for an event that has no photos: the app's misty header photo
-/// with the church logo, so the card still reads as a card.
-class _NoPhotos extends StatelessWidget {
-  const _NoPhotos();
+/// Stands in for a photo that couldn't load: the church's mark, faint.
+class _NoPhoto extends StatelessWidget {
+  const _NoPhoto();
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(CccAssets.headerBackground, fit: BoxFit.cover),
-        const ColoredBox(color: Color(0x80FFFFFF)),
-        const Center(child: ChurchLogo(width: 64, color: CccColors.navy)),
-      ],
+    final p = context.palette;
+    return ColoredBox(
+      color: p.surfaceAlt,
+      child: Center(
+        child: ChurchLogo(
+          width: 56,
+          color: p.textMuted.withValues(alpha: 0.45),
+        ),
+      ),
     );
   }
 }
 
-/// Swipeable event photos with page dots and an optional LIVE badge. With no
-/// photos it shows a plain placeholder.
+/// Swipeable photos with page dots and an optional Live badge.
 class ImageCarousel extends StatefulWidget {
   const ImageCarousel({
     required this.images,
     required this.height,
     this.isLive = false,
-    this.badgeWidth = 40,
-    this.badgeInset = 10,
-    this.dotsBottom = 15,
+    this.badgeInset = 12,
+    this.dotsBottom = 14,
     super.key,
   });
 
   final List<String> images;
   final double height;
   final bool isLive;
-  final double badgeWidth;
   final double badgeInset;
   final double dotsBottom;
 
@@ -197,7 +198,7 @@ class _ImageCarouselState extends State<ImageCarousel> {
         fit: StackFit.expand,
         children: [
           if (widget.images.isEmpty)
-            const _NoPhotos()
+            const _NoPhoto()
           else
             PageView.builder(
               controller: controller,
@@ -208,8 +209,8 @@ class _ImageCarouselState extends State<ImageCarousel> {
           if (widget.isLive)
             Positioned(
               top: widget.badgeInset,
-              right: widget.badgeInset,
-              child: LiveBadge(width: widget.badgeWidth),
+              left: widget.badgeInset,
+              child: const LiveBadge(),
             ),
           if (widget.images.length > 1)
             Positioned(
@@ -236,15 +237,18 @@ class PageDots extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (var i = 0; i < count; i++) ...[
-          if (i > 0) const SizedBox(width: 10),
+          if (i > 0) const SizedBox(width: 6),
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 8,
-            height: 8,
+            curve: Curves.easeOutCubic,
+            width: i == index ? 18 : 6,
+            height: 6,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i == index ? CccColors.paper : Colors.transparent,
-              border: Border.all(color: CccColors.paper, width: 1.2),
+              borderRadius: BorderRadius.circular(3),
+              color: i == index ? Colors.white : const Color(0x99FFFFFF),
+              boxShadow: const [
+                BoxShadow(color: Color(0x40000000), blurRadius: 4),
+              ],
             ),
           ),
         ],
@@ -253,26 +257,48 @@ class PageDots extends StatelessWidget {
   }
 }
 
+/// Red "Live" pill for streams that are on now.
 class LiveBadge extends StatelessWidget {
-  const LiveBadge({this.width = 40, super.key});
+  const LiveBadge({super.key});
 
-  final double width;
+  /// White on this red is 4.9:1.
+  static const red = Color(0xFFD92D20);
 
   @override
   Widget build(BuildContext context) {
-    final inset = width * 2.22 / 40;
-    return Container(
-      width: width,
-      height: width * 18.89 / 40,
-      padding: EdgeInsets.all(inset),
-      decoration: BoxDecoration(
-        color: CccColors.paper,
-        borderRadius: BorderRadius.circular(width / 40),
-      ),
-      child: Image.asset(
-        CccAssets.liveBadge,
-        fit: BoxFit.fill,
-        semanticLabel: 'Live',
+    // Its own node, so screen readers announce it apart from the title.
+    return Semantics(
+      container: true,
+      label: 'Live',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
+        decoration: BoxDecoration(
+          color: red,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+              child: SizedBox.square(dimension: 6),
+            ),
+            SizedBox(width: 6),
+            Text(
+              'Live',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

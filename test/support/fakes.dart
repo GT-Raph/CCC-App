@@ -539,7 +539,12 @@ class Harness {
     await tester.pumpWidget(
       CccScope(
         state: state,
-        child: MaterialApp(theme: buildCccTheme(), home: home),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: buildCccTheme(),
+          darkTheme: buildCccTheme(Brightness.dark),
+          home: home,
+        ),
       ),
     );
     await tester.pumpAndSettle();

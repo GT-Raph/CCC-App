@@ -94,13 +94,13 @@ void main() {
     );
 
     expect(source.requests, [botwe.id]);
-    // The branch bar and the Sunday service's church row.
+    // The branch chip and the Sunday service's church row.
     expect(find.text('CCC Botwe'), findsNWidgets(2));
     expect(find.text('Botwe Sunday Service'), findsOneWidget);
     expect(find.text('Youth Convention'), findsOneWidget);
     expect(find.text('CCC Westland, for all branches'), findsOneWidget);
     expect(find.text('Dawn Prayer'), findsNothing);
-    expect(find.text('Watch Live'), findsNothing);
+    expect(find.text('Watch live'), findsNothing);
   });
 
   testWidgets("a live branch stream turns its event into Watch Live", (
@@ -117,11 +117,11 @@ void main() {
         ),
       ],
     );
-    expect(find.text('Remind Me'), findsOneWidget);
+    expect(find.text('Remind me'), findsOneWidget);
 
     source.streams.add([live(botwe)]);
     await tester.pumpAndSettle();
-    expect(find.text('Watch Live'), findsOneWidget);
+    expect(find.text('Watch live'), findsOneWidget);
     expect(find.bySemanticsLabel('Live'), findsOneWidget);
     // Matched to the event, so no separate "is live now" card.
     expect(find.text('CCC Botwe is live now'), findsNothing);
@@ -134,8 +134,8 @@ void main() {
       ),
     ]);
     await tester.pumpAndSettle();
-    expect(find.text('Watch Live'), findsNothing);
-    expect(find.text('Remind Me'), findsOneWidget);
+    expect(find.text('Watch live'), findsNothing);
+    expect(find.text('Remind me'), findsOneWidget);
   });
 
   testWidgets('a branch live outside any event shows at the top', (
@@ -162,7 +162,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('CCC Botwe is live now'), findsOneWidget);
     expect(find.text('CCC Botwe Sunday Service'), findsOneWidget);
-    expect(find.text('Watch Live'), findsOneWidget);
+    expect(find.text('Watch live'), findsOneWidget);
   });
 
   testWidgets('guests see all-branch events until they choose a branch', (
@@ -194,7 +194,7 @@ void main() {
     expect(find.text('Youth Convention'), findsOneWidget);
     expect(find.text('Botwe Sunday Service'), findsNothing);
 
-    await tester.tap(find.text('Choose'));
+    await tester.tap(find.byTooltip('Change branch'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('CCC Botwe'));
     await tester.pumpAndSettle();

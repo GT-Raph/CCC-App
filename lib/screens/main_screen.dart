@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/admin_drafts.dart';
 import '../models/church_branch.dart';
@@ -28,10 +27,10 @@ import 'event_details_screen.dart';
 import 'ministry_details_screen.dart';
 
 String greetingFor(DateTime time) => time.hour < 12
-    ? 'Good morning,'
+    ? 'Good morning'
     : time.hour < 17
-    ? 'Good afternoon,'
-    : 'Good evening,';
+    ? 'Good afternoon'
+    : 'Good evening';
 
 /// "Home", "Event" and "Church Community" frames: one screen with the photo
 /// header, the Home / Events / Church / Ministries / Sermons switcher, search
@@ -56,11 +55,18 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   static const _titles = [
-    'News by church',
-    'Events near me',
+    'News',
+    'Events',
     'Branches',
     'Ministries',
     'Sermons',
+  ];
+  static const _searchHints = [
+    'Search news',
+    'Search events',
+    'Search branches',
+    'Search ministries',
+    'Search sermons',
   ];
   static const _homeTab = 0;
   static const _eventsTab = 1;
@@ -235,105 +241,117 @@ class _MainScreenState extends State<MainScreen> {
     }
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: CccColors.paper,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SheetHandle(),
-              const SizedBox(height: 16),
-              Text(
-                member.firstName,
-                style: const TextStyle(
-                  fontFamily: CccFonts.montserrat,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 24,
-                  color: CccColors.ink,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                member.email,
-                style: const TextStyle(fontSize: 14, color: CccColors.body),
-              ),
-              const SizedBox(height: 20),
-              ListenableBuilder(
-                listenable: CccScope.of(context).sermons,
-                builder: (_, _) => _AccountBranch(
-                  branch: CccScope.of(context).sermons.branch,
-                  onChange: () {
-                    Navigator.pop(sheetContext);
-                    _chooseBranch();
-                  },
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (CccScope.of(context).staff.isStaff) ...[
-                CccButton(
-                  label: 'Manage church content',
-                  iconGap: 10,
-                  icon: const Icon(Icons.edit_note, size: 26),
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AdminHomeScreen(),
+      builder: (sheetContext) {
+        final p = sheetContext.palette;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SheetHandle(),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    _Avatar(member: member, size: 48),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            member.firstName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                              letterSpacing: -0.3,
+                              color: p.text,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            member.email,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: p.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                    );
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ListenableBuilder(
+                  listenable: CccScope.of(context).sermons,
+                  builder: (_, _) => _AccountBranch(
+                    branch: CccScope.of(context).sermons.branch,
+                    onChange: () {
+                      Navigator.pop(sheetContext);
+                      _chooseBranch();
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (CccScope.of(context).staff.isStaff) ...[
+                  CccButton(
+                    label: 'Manage church content',
+                    variant: CccButtonVariant.tonal,
+                    icon: const Icon(Icons.edit_note),
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AdminHomeScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                CccButton(
+                  label: 'Sign out',
+                  variant: CccButtonVariant.outlined,
+                  icon: const Icon(Icons.logout),
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    final state = CccScope.of(context);
+                    final player = state.player;
+                    await AuthService.signOut();
+                    await state.ministries.useMember(null);
+                    await state.staff.useMember(null);
+                    await state.sermons.useListener(null);
+                    await player.close();
+                    if (mounted) CccNavigation.openWelcome(context);
                   },
                 ),
-                const SizedBox(height: 14),
               ],
-              CccButton(
-                label: 'Sign out',
-                variant: CccButtonVariant.outlined,
-                onPressed: () async {
-                  Navigator.pop(sheetContext);
-                  final state = CccScope.of(context);
-                  final player = state.player;
-                  await AuthService.signOut();
-                  await state.ministries.useMember(null);
-                  await state.staff.useMember(null);
-                  await state.sermons.useListener(null);
-                  await player.close();
-                  if (mounted) CccNavigation.openWelcome(context);
-                },
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final player = CccScope.of(context).player;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
-      // Rebuilds when a sermon is loaded or closed, not as it plays.
-      child: ListenableBuilder(
-        listenable: player,
-        builder: (context, body) => Scaffold(
-          backgroundColor: CccColors.background,
-          bottomNavigationBar: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (player.sermon != null) const MiniPlayer(),
-              CccNavigationBar(selectedIndex: tab, onSelected: _selectTab),
-            ],
-          ),
-          body: body,
+    // Rebuilds when a sermon is loaded or closed, not as it plays.
+    return ListenableBuilder(
+      listenable: player,
+      builder: (context, body) => Scaffold(
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (player.sermon != null) const MiniPlayer(),
+            CccNavigationBar(selectedIndex: tab, onSelected: _selectTab),
+          ],
         ),
-        child: Builder(builder: _content),
+        body: body,
       ),
+      child: Builder(builder: _content),
     );
   }
 
@@ -348,21 +366,24 @@ class _MainScreenState extends State<MainScreen> {
       _ => null,
     };
     if (!staff.isStaff || kind == null) return null;
+    final p = context.palette;
     return TextButton.icon(
       onPressed: () => openEditor(context, kind),
       style: TextButton.styleFrom(
-        foregroundColor: CccColors.ink,
-        backgroundColor: CccColors.primaryTint,
-        shape: const StadiumBorder(side: BorderSide(color: CccColors.primary)),
+        foregroundColor: p.text,
+        backgroundColor: p.accentTint,
+        shape: const StadiumBorder(),
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        minimumSize: const Size(0, 36),
-        // A 48px touch target around the smaller pill.
-        tapTargetSize: MaterialTapTargetSize.padded,
+        minimumSize: const Size(0, 44),
       ),
-      icon: const Icon(Icons.add, size: 18),
+      icon: Icon(Icons.add, size: 18, color: p.accentText),
       label: Text(
         'New ${kind.noun}',
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          fontFamily: CccFonts.openSans,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -384,35 +405,52 @@ class _MainScreenState extends State<MainScreen> {
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         slivers: [
           SliverToBoxAdapter(
-            child: GreetingHeader(
-              greeting: greetingFor(DateTime.now()),
-              name: widget.member?.firstName ?? 'Guest',
-              onAvatarTap: _openAccount,
-              onSettingsTap: _openAccount,
+            child: _Header(
+              greeting: [
+                greetingFor(DateTime.now()),
+                ?widget.member?.firstName,
+              ].join(', '),
+              title: _titles[tab],
+              member: widget.member,
+              onAccount: _openAccount,
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 30),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             sliver: SliverToBoxAdapter(
               child: CccSearchField(
                 controller: searchController,
+                hint: _searchHints[tab],
                 onChanged: (value) => setState(() => query = value),
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverToBoxAdapter(
-              child: Row(
-                children: [
-                  Expanded(child: SectionTitle(_titles[tab])),
-                  ?_newButton(context),
-                ],
+          if (tab != _churchTab)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              sliver: SliverToBoxAdapter(
+                child: ListenableBuilder(
+                  listenable: CccScope.of(context).sermons,
+                  builder: (context, _) => Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: _BranchChip(
+                          branch: CccScope.of(context).sermons.branch,
+                          onTap: _chooseBranch,
+                        ),
+                      ),
+                      if (_newButton(context) case final button?) ...[
+                        const SizedBox(width: 12),
+                        button,
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
           SliverPadding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, 34 + bottom),
+            padding: EdgeInsets.fromLTRB(20, 18, 20, 28 + bottom),
             sliver: switch (tab) {
               _homeTab => _news(context),
               _eventsTab => _events(context),
@@ -449,7 +487,6 @@ extension on _MainScreenState {
             .where((item) => item.matches(query))
             .toList();
         return _feedList([
-          _ListeningBranch(branch: branch, onChange: _chooseBranch),
           if (visible.isEmpty)
             _TabNotice(
               icon: Icons.article_outlined,
@@ -494,7 +531,6 @@ extension on _MainScreenState {
             .where((ministry) => ministry.matches(query))
             .toList();
         return _feedList([
-          _ListeningBranch(branch: branch, onChange: _chooseBranch),
           if (visible.isEmpty)
             _TabNotice(
               icon: Icons.people_outline,
@@ -567,7 +603,7 @@ extension on _MainScreenState {
   Widget _feedList(List<Widget> items) => SliverList.separated(
     itemCount: items.length,
     itemBuilder: (_, index) => items[index],
-    separatorBuilder: (_, _) => const SizedBox(height: 20),
+    separatorBuilder: (_, _) => const SizedBox(height: 14),
   );
 }
 
@@ -636,16 +672,16 @@ extension on _MainScreenState {
               ),
             ),
           if (directory.branches.isNotEmpty)
-            const Text(
+            Text(
               'Branch details and photos from Google Maps',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: CccColors.body),
+              style: TextStyle(fontSize: 12, color: context.palette.textMuted),
             ),
         ];
         return SliverList.separated(
           itemCount: items.length,
           itemBuilder: (_, index) => items[index],
-          separatorBuilder: (_, _) => const SizedBox(height: 20),
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
         );
       },
     );
@@ -676,7 +712,6 @@ extension on _MainScreenState {
             .where((event) => event.matches(query))
             .toList();
         final items = <Widget>[
-          _ListeningBranch(branch: branch, onChange: _chooseBranch),
           if (liveNow != null && branch != null && query.isEmpty)
             LiveNowCard(
               stream: liveNow,
@@ -716,7 +751,7 @@ extension on _MainScreenState {
         return SliverList.separated(
           itemCount: items.length,
           itemBuilder: (_, index) => items[index],
-          separatorBuilder: (_, _) => const SizedBox(height: 20),
+          separatorBuilder: (_, _) => const SizedBox(height: 14),
         );
       },
     );
@@ -758,7 +793,6 @@ extension on _MainScreenState {
             .where((sermon) => sermon.matches(query))
             .toList();
         final items = <Widget>[
-          _ListeningBranch(branch: branch, onChange: _chooseBranch),
           if (status == SermonStatus.loading)
             const SkeletonList(label: 'Loading sermons', count: 4)
           else if (status == SermonStatus.failed)
@@ -798,57 +832,166 @@ extension on _MainScreenState {
         return SliverList.separated(
           itemCount: items.length,
           itemBuilder: (_, index) => items[index],
-          separatorBuilder: (_, index) =>
-              SizedBox(height: index == 0 ? 16 : 12),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
         );
       },
     );
   }
 }
 
-/// The branch whose sermons or events are listed, with a way to switch. With
-/// no branch chosen, the events are the all-branch ones.
-class _ListeningBranch extends StatelessWidget {
-  const _ListeningBranch({required this.branch, required this.onChange});
+/// Greeting, the tab's title and the account button.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.greeting,
+    required this.title,
+    required this.member,
+    required this.onAccount,
+  });
 
-  final ChurchBranch? branch;
-  final VoidCallback onChange;
+  final String greeting;
+  final String title;
+  final Member? member;
+  final VoidCallback onAccount;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(15, 4, 4, 4),
-      decoration: BoxDecoration(
-        color: CccColors.paper,
-        borderRadius: BorderRadius.circular(10),
-      ),
+    final p = context.palette;
+    final top = MediaQuery.paddingOf(context).top;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, top + 14, 12, 0),
       child: Row(
         children: [
-          const Icon(Icons.church, size: 20, color: CccColors.primary),
-          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              branch?.name ?? 'All branches',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                height: 1.25,
-                color: CccColors.ink,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: p.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
+                      letterSpacing: -0.8,
+                      color: p.text,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Semantics(
+            button: true,
+            label: 'Account',
+            excludeSemantics: true,
+            child: InkResponse(
+              onTap: onAccount,
+              radius: 26,
+              child: SizedBox.square(
+                dimension: 52,
+                child: Center(child: _Avatar(member: member, size: 40)),
               ),
             ),
           ),
-          TextButton(
-            onPressed: onChange,
-            style: TextButton.styleFrom(
-              foregroundColor: CccColors.navy,
-              minimumSize: const Size(64, 44),
+        ],
+      ),
+    );
+  }
+}
+
+/// The member's initial on gold, or a person outline for a guest.
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.member, required this.size});
+
+  final Member? member;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final name = member?.firstName.trim() ?? '';
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: member == null ? p.surfaceAlt : CccColors.primary,
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: name.isEmpty
+          ? Icon(Icons.person_outline, size: size * 0.55, color: p.text)
+          : Text(
+              name.characters.first.toUpperCase(),
+              style: TextStyle(
+                fontSize: size * 0.42,
+                fontWeight: FontWeight.w800,
+                height: 1,
+                color: CccColors.onPrimary,
+              ),
             ),
-            child: Text(
-              branch == null ? 'Choose' : 'Change',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+    );
+  }
+}
+
+/// The branch whose news, events, ministries and sermons are listed. With no
+/// branch chosen, the lists show what's shared with every branch.
+class _BranchChip extends StatelessWidget {
+  const _BranchChip({required this.branch, required this.onTap});
+
+  final ChurchBranch? branch;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Tooltip(
+      message: 'Change branch',
+      child: Material(
+        color: p.surface,
+        shape: StadiumBorder(side: BorderSide(color: p.line)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 44,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.church_outlined, size: 17, color: p.accentText),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      branch?.name ?? 'All branches',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: p.text,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.expand_more, size: 20, color: p.textMuted),
+                ],
+              ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -863,43 +1006,55 @@ class _AccountBranch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.church, size: 22, color: CccColors.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Your branch',
-                style: TextStyle(fontSize: 13, color: CccColors.body),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                branch?.name ?? 'Not chosen yet',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
-                  color: CccColors.ink,
+    final p = context.palette;
+    return CccCard(
+      padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+      child: Row(
+        children: [
+          Icon(Icons.church_outlined, size: 20, color: p.textMuted),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your branch',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: p.textMuted,
+                  ),
                 ),
+                const SizedBox(height: 2),
+                Text(
+                  branch?.name ?? 'Not chosen yet',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                    color: p.text,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onChange,
+            style: TextButton.styleFrom(
+              foregroundColor: p.accentText,
+              minimumSize: const Size(64, 44),
+            ),
+            child: Text(
+              branch == null ? 'Choose' : 'Change',
+              style: const TextStyle(
+                fontFamily: CccFonts.openSans,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
               ),
-            ],
+            ),
           ),
-        ),
-        TextButton(
-          onPressed: onChange,
-          style: TextButton.styleFrom(
-            foregroundColor: CccColors.navy,
-            minimumSize: const Size(64, 44),
-          ),
-          child: Text(
-            branch == null ? 'Choose' : 'Change',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -921,23 +1076,41 @@ class _TabNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 12),
       child: Column(
         children: [
-          Icon(icon, size: 40, color: CccColors.inactive),
-          const SizedBox(height: 12),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: p.surfaceAlt,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 26, color: p.textMuted),
+          ),
+          const SizedBox(height: 14),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, color: CccColors.body),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+              color: p.text,
+            ),
           ),
           if (detail != null) ...[
             const SizedBox(height: 6),
             Text(
               detail!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: CccColors.body),
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                color: p.textSecondary,
+              ),
             ),
           ],
           if (actionLabel != null) ...[
@@ -946,9 +1119,9 @@ class _TabNotice extends StatelessWidget {
               label: actionLabel!,
               onPressed: onAction,
               variant: CccButtonVariant.outlined,
-              width: 188,
+              width: 180,
               height: 44,
-              fontSize: 14,
+              fontSize: 15,
             ),
           ],
         ],
@@ -967,6 +1140,7 @@ class _LocationBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final (message, action) = switch (access) {
       LocationAccess.serviceOff => (
         'Turn on location to see the nearest branches and travel times.',
@@ -981,23 +1155,19 @@ class _LocationBanner extends StatelessWidget {
         'Allow',
       ),
     };
-    return Container(
-      padding: const EdgeInsets.fromLTRB(15, 14, 12, 14),
-      decoration: BoxDecoration(
-        color: CccColors.paper,
-        borderRadius: BorderRadius.circular(10),
-      ),
+    return CccCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
       child: Row(
         children: [
-          const Icon(Icons.my_location, color: CccColors.primary, size: 22),
+          Icon(Icons.near_me_outlined, color: p.accentText, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                height: 18 / 14,
-                color: CccColors.body,
+                height: 1.4,
+                color: p.textSecondary,
               ),
             ),
           ),
@@ -1005,8 +1175,8 @@ class _LocationBanner extends StatelessWidget {
           CccButton(
             label: action,
             onPressed: onEnable,
-            width: 84,
-            height: 36,
+            width: 92,
+            height: 40,
             fontSize: 14,
           ),
         ],

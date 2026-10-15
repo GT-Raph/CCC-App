@@ -618,13 +618,19 @@ class _SermonEditorState extends State<SermonEditor>
                     placeholder: newAudio == null && savedAudio.isEmpty,
                     error: audioError,
                     onTap: _chooseAudio,
-                    trailing: const Icon(Icons.upload, color: CccColors.ink),
+                    trailing: Icon(
+                      Icons.upload,
+                      color: context.palette.textMuted,
+                    ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 12, top: 6),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, top: 6),
                     child: Text(
                       'MP3, M4A, AAC, WAV or OGG, up to 50 MB.',
-                      style: TextStyle(fontSize: 13, color: CccColors.muted),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.palette.textMuted,
+                      ),
                     ),
                   ),
                 ],

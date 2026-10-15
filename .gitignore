@@ -61,6 +61,7 @@ node_modules/
 .playwright-cli/
 .qodo/
 graphify-out/
+brag-output/
 
 # Operating system and misc ----------------------------------------------------
 .DS_Store

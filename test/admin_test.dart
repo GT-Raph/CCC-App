@@ -130,7 +130,7 @@ void main() {
     expect(saved.values['branch_id'], 'b-botwe');
     expect(find.text('Published.'), findsOneWidget);
     // Back on Home, which reloaded the news.
-    expect(find.text('News by church'), findsOneWidget);
+    expect(find.text('News'), findsOneWidget);
     expect(harness.news.requests.length, greaterThan(newsLoads));
   });
 

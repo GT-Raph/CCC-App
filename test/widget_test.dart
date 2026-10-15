@@ -1,5 +1,6 @@
 import 'package:ccc_app/main.dart';
 import 'package:ccc_app/screens/main_screen.dart';
+import 'package:ccc_app/screens/welcome_screen.dart';
 import 'package:ccc_app/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,9 +22,9 @@ Future<void> openWelcome(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Taps Guest and waits for the delayed "Login after Home" sheet.
+/// Continues as a guest and waits for the delayed "Log in after Home" sheet.
 Future<void> enterAsGuest(WidgetTester tester) async {
-  await tester.tap(find.text('Guest'));
+  await tester.tap(find.text('Continue as guest'));
   await tester.pumpAndSettle();
   await tester.pump(const Duration(seconds: 1));
   await tester.pumpAndSettle();
@@ -76,10 +77,39 @@ void main() {
     await openWelcome(tester);
 
     expect(find.text('Calvary Charismatic Centre'), findsOneWidget);
-    expect(find.text('Login'), findsOneWidget);
-    expect(find.text('Register'), findsOneWidget);
-    expect(find.text('Guest'), findsOneWidget);
-    expect(find.text('Or login with...'), findsNothing);
+    expect(find.text('Create account'), findsOneWidget);
+    expect(find.text('Log in'), findsOneWidget);
+    expect(find.text('Continue as guest'), findsOneWidget);
+    // Social sign-in stays hidden until a provider is switched on.
+    expect(find.text('Or continue with'), findsNothing);
+  });
+
+  testWidgets('create account opens sign up', (tester) async {
+    usePhoneScreen(tester);
+    await openWelcome(tester);
+
+    await tester.tap(find.text('Create account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create your account'), findsOneWidget);
+  });
+
+  testWidgets('with reduced motion the welcome screen opens settled', (
+    tester,
+  ) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
+
+    final fade = tester.widget<FadeTransition>(
+      find
+          .ancestor(
+            of: find.text('Create account'),
+            matching: find.byType(FadeTransition),
+          )
+          .first,
+    );
+    expect(fade.opacity.value, 1);
   });
 
   testWidgets('guest is invited to log in and can skip', (tester) async {
@@ -88,13 +118,12 @@ void main() {
 
     await enterAsGuest(tester);
 
-    expect(find.text('CREATE AN ACCOUNT'), findsOneWidget);
-    await tester.tap(find.text('Skip'));
+    expect(find.text('Log in to continue'), findsOneWidget);
+    await tester.tap(find.text('Not now'));
     await tester.pumpAndSettle();
 
-    expect(find.text('CREATE AN ACCOUNT'), findsNothing);
-    expect(find.text('Guest'), findsOneWidget);
-    expect(find.text('News by church'), findsOneWidget);
+    expect(find.text('Log in to continue'), findsNothing);
+    expect(find.text('News'), findsOneWidget);
     expect(find.text('Harvest Thanksgiving'), findsOneWidget);
   });
 
@@ -104,19 +133,19 @@ void main() {
     usePhoneScreen(tester);
     await openWelcome(tester);
     await enterAsGuest(tester);
-    await tester.tap(find.text('Skip'));
+    await tester.tap(find.text('Not now'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Events'));
     await tester.pumpAndSettle();
-    await scrollTo(tester, find.text('Remind Me').first);
-    await tester.tap(find.text('Remind Me').first);
+    await scrollTo(tester, find.text('Remind me').first);
+    await tester.tap(find.text('Remind me').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('CREATE AN ACCOUNT'), findsOneWidget);
-    await tester.tap(find.text('CREATE AN ACCOUNT'));
+    expect(find.text('Log in to continue'), findsOneWidget);
+    await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
-    expect(find.text('Create Account'), findsOneWidget);
+    expect(find.text('Create your account'), findsOneWidget);
   });
 
   testWidgets('tabs switch between news, events, branches and ministries', (
@@ -125,12 +154,13 @@ void main() {
     usePhoneScreen(tester);
     await pumpMember(tester);
 
-    expect(find.text('Ama'), findsOneWidget);
-    expect(find.text('News by church'), findsOneWidget);
+    expect(find.textContaining(', Ama'), findsOneWidget);
+    expect(find.text('News'), findsOneWidget);
 
     await tester.tap(find.text('Events'));
     await tester.pumpAndSettle();
-    expect(find.text('Events near me'), findsOneWidget);
+    // The tab label and the screen title.
+    expect(find.text('Events'), findsNWidgets(2));
     expect(find.text('Intercessory Prayers'), findsWidgets);
 
     await tester.tap(find.text('Church'));
@@ -144,7 +174,7 @@ void main() {
 
     await tester.tap(find.text('Ministries'));
     await tester.pumpAndSettle();
-    // The tab label and the section title.
+    // The tab label and the screen title.
     expect(find.text('Ministries'), findsNWidgets(2));
     expect(find.text('Kharis Ladies'), findsOneWidget);
     expect(find.text("Women's fellowship"), findsOneWidget);
@@ -175,15 +205,14 @@ void main() {
 
     await tester.tap(find.text('Kharis Ladies'));
     await tester.pumpAndSettle();
-    expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Kharis Ladies'), findsOneWidget);
     expect(find.textContaining('A fellowship for the women'), findsOneWidget);
     expect(find.text('Saturdays, 4:00 PM'), findsOneWidget);
 
-    await scrollToText(tester, 'Joined');
     await tester.tap(find.text('Joined'));
     await tester.pumpAndSettle();
     expect(find.text('You left Kharis Ladies.'), findsOneWidget);
-    expect(find.text('Join Ministry'), findsOneWidget);
+    expect(find.text('Join ministry'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -199,7 +228,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Join Kharis Ladies'));
     await tester.pumpAndSettle();
-    expect(find.text('CREATE AN ACCOUNT'), findsOneWidget);
+    expect(find.text('Log in to continue'), findsOneWidget);
     expect(find.text('Joined'), findsNothing);
   });
 
@@ -238,8 +267,8 @@ void main() {
     usePhoneScreen(tester);
     final harness = await pumpMember(tester, tab: 1);
 
-    await scrollTo(tester, find.text('Remind Me').first);
-    await tester.tap(find.text('Remind Me').first);
+    await scrollTo(tester, find.text('Remind me').first);
+    await tester.tap(find.text('Remind me').first);
     await tester.pumpAndSettle();
     expect(find.text('Reminded'), findsOneWidget);
     expect(harness.scheduler.scheduled, hasLength(1));
@@ -253,16 +282,17 @@ void main() {
     await tester.tap(find.text('Intercessory Prayers').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Intercessory Prayers'), findsOneWidget);
+    await scrollToText(tester, 'events@example.org');
     expect(find.text('+233 20 000 0000'), findsOneWidget);
     expect(find.text('events@example.org'), findsOneWidget);
+    // The main action and Share stay pinned along the bottom.
     expect(find.text('Share'), findsOneWidget);
-    await scrollToText(tester, 'Remind Me');
-    expect(find.text('Remind Me'), findsOneWidget);
+    expect(find.text('Remind me'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    expect(find.text('Events near me'), findsOneWidget);
+    expect(find.text('Events'), findsNWidgets(2));
   });
 
   testWidgets('login and sign up validate before contacting Supabase', (
@@ -271,10 +301,10 @@ void main() {
     usePhoneScreen(tester);
     await openWelcome(tester);
 
-    await tester.tap(find.text('Login'));
+    await tester.tap(find.text('Log in'));
     await tester.pumpAndSettle();
-    expect(find.text('Welcome Back'), findsOneWidget);
-    await tester.tap(find.text('Login'));
+    expect(find.text('Welcome back'), findsOneWidget);
+    await tester.tap(find.text('Log in'));
     await tester.pump();
     expect(
       find.text(
@@ -283,9 +313,9 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.textContaining('Sign Up'));
+    await tester.tap(find.textContaining('Create account'));
     await tester.pumpAndSettle();
-    expect(find.text('Create Account'), findsOneWidget);
+    expect(find.text('Create your account'), findsOneWidget);
     // Let the login error snackbar time out so it no longer covers the form.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
@@ -295,7 +325,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(2), 'jessica@example.com');
     await tester.enterText(find.byType(TextField).at(3), 'secret1');
     await tester.enterText(find.byType(TextField).at(4), 'secret2');
-    await tester.tap(find.text('Sign up'));
+    await tester.tap(find.text('Create account'));
     await tester.pump();
     expect(find.text('The passwords do not match.'), findsOneWidget);
   });

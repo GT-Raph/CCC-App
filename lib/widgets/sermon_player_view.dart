@@ -29,17 +29,12 @@ class MiniPlayer extends StatelessWidget {
         final sermon = player.sermon;
         if (sermon == null) return const SizedBox.shrink();
         final error = player.error;
+        final p = context.palette;
         return _SlideUp(
           child: DecoratedBox(
-            decoration: const BoxDecoration(
-              color: CccColors.paper,
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x1F000000),
-                  blurRadius: 12,
-                  offset: Offset(0, -2),
-                ),
-              ],
+            decoration: BoxDecoration(
+              color: p.surface,
+              border: Border(top: BorderSide(color: p.line)),
             ),
             // Sits on the navigation bar, which keeps clear of the home
             // indicator, so it needs no bottom inset of its own.
@@ -79,11 +74,11 @@ class MiniPlayer extends StatelessWidget {
                                     sermon.title,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w700,
                                       height: 1.2,
-                                      color: CccColors.ink,
+                                      color: p.text,
                                     ),
                                   ),
                                   const SizedBox(height: 3),
@@ -95,8 +90,8 @@ class MiniPlayer extends StatelessWidget {
                                       fontSize: 13,
                                       height: 1.2,
                                       color: error == null
-                                          ? CccColors.body
-                                          : CccColors.error,
+                                          ? p.textMuted
+                                          : p.error,
                                     ),
                                   ),
                                 ],
@@ -105,10 +100,7 @@ class MiniPlayer extends StatelessWidget {
                             IconButton(
                               onPressed: player.close,
                               tooltip: 'Close player',
-                              icon: const Icon(
-                                Icons.close,
-                                color: CccColors.ink,
-                              ),
+                              icon: Icon(Icons.close, color: p.textMuted),
                             ),
                             const SizedBox(width: 6),
                           ],
@@ -167,7 +159,7 @@ class _ProgressLine extends StatelessWidget {
               : 0,
           minHeight: 2,
           color: CccColors.primary,
-          backgroundColor: CccColors.border,
+          backgroundColor: context.palette.line,
         );
       },
     );
@@ -180,10 +172,6 @@ Future<void> showSermonPlayer(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: CccColors.paper,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (_) => const _PlayerSheet(),
   );
 }
@@ -201,6 +189,7 @@ class _PlayerSheet extends StatelessWidget {
         final sermon = player.sermon;
         if (sermon == null) return const SizedBox(height: 120);
         final error = player.error;
+        final p = context.palette;
         return ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
           child: SafeArea(
@@ -212,51 +201,39 @@ class _PlayerSheet extends StatelessWidget {
                 children: [
                   const SheetHandle(),
                   const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.church,
-                        size: 16,
-                        color: CccColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          player.branchName,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: CccColors.body,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
                   Text(
-                    sermon.title,
-                    style: const TextStyle(
-                      fontFamily: CccFonts.playfair,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 28,
-                      height: 1.15,
-                      color: CccColors.navy,
+                    player.branchName,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: p.accentText,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
+                  Text(
+                    sermon.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 25,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                      color: p.text,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   if (sermon.preacher.isNotEmpty)
                     Text(
                       sermon.preacher,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: CccColors.body,
+                        color: p.textSecondary,
                       ),
                     ),
                   const SizedBox(height: 2),
                   Text(
                     sermon.dateLabel,
-                    style: const TextStyle(fontSize: 14, color: CccColors.body),
+                    style: TextStyle(fontSize: 14, color: p.textMuted),
                   ),
                   const SizedBox(height: 22),
                   _SeekBar(player: player),
@@ -292,10 +269,7 @@ class _PlayerSheet extends StatelessWidget {
                     Text(
                       error,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CccColors.error,
-                      ),
+                      style: TextStyle(fontSize: 14, color: p.error),
                     ),
                   ],
                   const SizedBox(height: 18),
@@ -310,10 +284,10 @@ class _PlayerSheet extends StatelessWidget {
                             sermon.shareText(player.branchName),
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: CccColors.ink,
+                            foregroundColor: p.text,
                             minimumSize: const Size(48, 44),
                           ),
-                          icon: const Icon(Icons.share, size: 22),
+                          icon: const Icon(Icons.share_outlined, size: 20),
                           label: const Text(
                             'Share',
                             style: TextStyle(
@@ -327,14 +301,14 @@ class _PlayerSheet extends StatelessWidget {
                   ),
                   if (sermon.description.isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    const Divider(height: 1, color: CccColors.border),
+                    const Divider(height: 1),
                     const SizedBox(height: 16),
                     Text(
                       sermon.description,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        height: 1.55,
-                        color: CccColors.body,
+                      style: TextStyle(
+                        fontSize: 15.5,
+                        height: 1.6,
+                        color: p.textSecondary,
                       ),
                     ),
                   ],
@@ -361,15 +335,15 @@ class _SeekBarState extends State<_SeekBar> {
   /// Where the thumb is while it is being dragged.
   double? dragging;
 
-  static const _timeStyle = TextStyle(
-    fontSize: 13,
-    color: CccColors.body,
-    fontFeatures: [FontFeature.tabularFigures()],
-  );
-
   @override
   Widget build(BuildContext context) {
     final player = widget.player;
+    final p = context.palette;
+    final timeStyle = TextStyle(
+      fontSize: 13,
+      color: p.textMuted,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
     return ValueListenableBuilder(
       valueListenable: player.position,
       builder: (context, position, _) {
@@ -386,7 +360,7 @@ class _SeekBarState extends State<_SeekBar> {
               data: SliderTheme.of(context).copyWith(
                 trackHeight: 4,
                 activeTrackColor: CccColors.primary,
-                inactiveTrackColor: CccColors.border,
+                inactiveTrackColor: p.line,
                 thumbColor: CccColors.primary,
                 overlayColor: CccColors.primary.withValues(alpha: 0.15),
                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
@@ -412,11 +386,11 @@ class _SeekBarState extends State<_SeekBar> {
               padding: const EdgeInsets.only(top: 2),
               child: Row(
                 children: [
-                  Text(clockLabel(shown), style: _timeStyle),
+                  Text(clockLabel(shown), style: timeStyle),
                   const Spacer(),
                   Text(
                     total > 0 ? '-${clockLabel(left)}' : '',
-                    style: _timeStyle,
+                    style: timeStyle,
                   ),
                 ],
               ),
@@ -437,7 +411,7 @@ class _SkipIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: 52,
-      child: Icon(icon, size: 34, color: CccColors.ink),
+      child: Icon(icon, size: 32, color: context.palette.text),
     );
   }
 }
@@ -452,6 +426,7 @@ class _SpeedButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final speeds = SermonPlayer.speeds;
     final next = speeds[(speeds.indexOf(player.speed) + 1) % speeds.length];
     return Semantics(
@@ -461,10 +436,10 @@ class _SpeedButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: () => player.setSpeed(next),
         style: OutlinedButton.styleFrom(
-          foregroundColor: CccColors.ink,
-          backgroundColor: CccColors.primaryTint,
-          side: const BorderSide(color: CccColors.primary),
-          minimumSize: const Size(64, 40),
+          foregroundColor: p.text,
+          backgroundColor: p.surfaceAlt,
+          side: BorderSide.none,
+          minimumSize: const Size(64, 44),
           shape: const StadiumBorder(),
         ),
         child: Text(

@@ -7,14 +7,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'services/auth_service.dart';
-import 'widgets/ccc_widgets.dart';
+import 'theme/ccc_theme.dart';
 
 export 'app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(darkStatusBar);
+  // The splash screen is dark, whatever the phone's appearance.
+  SystemChrome.setSystemUIOverlayStyle(cccSystemBars(Brightness.dark));
   await _startBackgroundAudio();
   await dotenv.load(fileName: '.env');
   AuthService.socialProviders = AuthService.parseProviders(

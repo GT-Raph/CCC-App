@@ -19,10 +19,6 @@ Future<ChurchBranch?> showBranchPicker(
   return showModalBottomSheet<ChurchBranch>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: CccColors.paper,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
     builder: (_) => _BranchPickerSheet(
       library: library,
       selected: selected,
@@ -55,6 +51,7 @@ class _BranchPickerSheetState extends State<_BranchPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
+    final p = context.palette;
     return Padding(
       padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
       child: ConstrainedBox(
@@ -70,24 +67,25 @@ class _BranchPickerSheetState extends State<_BranchPickerSheet> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SheetHandle(),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   Text(
                     widget.title,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
                       height: 1.2,
-                      color: CccColors.ink,
+                      letterSpacing: -0.3,
+                      color: p.text,
                     ),
                   ),
                   if (widget.message != null) ...[
                     const SizedBox(height: 6),
                     Text(
                       widget.message!,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 19 / 14,
-                        color: CccColors.body,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        height: 1.45,
+                        color: p.textSecondary,
                       ),
                     ),
                   ],
@@ -113,9 +111,7 @@ class _BranchPickerSheetState extends State<_BranchPickerSheet> {
         return const [
           Padding(
             padding: EdgeInsets.symmetric(vertical: 32),
-            child: Center(
-              child: CircularProgressIndicator(color: CccColors.primary),
-            ),
+            child: Center(child: CircularProgressIndicator()),
           ),
         ];
       case BranchListStatus.failed:
@@ -158,8 +154,7 @@ class _BranchPickerSheetState extends State<_BranchPickerSheet> {
             : ListView.separated(
                 shrinkWrap: true,
                 itemCount: shown.length,
-                separatorBuilder: (_, _) =>
-                    const Divider(height: 1, color: CccColors.border),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) => _BranchRow(
                   branch: shown[index],
                   selected: shown[index] == widget.selected,
@@ -184,6 +179,7 @@ class _BranchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Semantics(
       selected: selected,
       button: true,
@@ -193,8 +189,12 @@ class _BranchRow extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 56),
           child: Row(
             children: [
-              const Icon(Icons.church, size: 20, color: CccColors.primary),
-              const SizedBox(width: 12),
+              Icon(
+                Icons.church_outlined,
+                size: 20,
+                color: selected ? p.accentText : p.textMuted,
+              ),
+              const SizedBox(width: 14),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
@@ -202,9 +202,9 @@ class _BranchRow extends StatelessWidget {
                     branch.name,
                     style: TextStyle(
                       fontSize: 16,
-                      height: 1.25,
+                      height: 1.3,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-                      color: CccColors.ink,
+                      color: p.text,
                     ),
                   ),
                 ),
@@ -232,24 +232,17 @@ class _PickerSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return TextField(
       onChanged: onChanged,
       textInputAction: TextInputAction.search,
-      style: const TextStyle(fontSize: 16, color: CccColors.ink),
-      decoration: InputDecoration(
-        hintText: 'Search branches',
-        hintStyle: const TextStyle(fontSize: 16, color: CccColors.body),
-        prefixIcon: const Icon(Icons.search, color: CccColors.ink),
-        filled: true,
-        fillColor: CccColors.primaryTint,
-        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      style: TextStyle(fontSize: 16, color: p.text),
+      decoration: cccFieldDecoration(context, hint: 'Search branches').copyWith(
+        prefixIcon: Icon(Icons.search, size: 20, color: p.textMuted),
+        fillColor: p.surfaceAlt,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: CccColors.primary),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: CccColors.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
       ),
     );
@@ -264,6 +257,7 @@ class _PickerNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
@@ -271,14 +265,14 @@ class _PickerNotice extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, color: CccColors.body),
+            style: TextStyle(fontSize: 16, color: p.textSecondary),
           ),
           if (detail != null) ...[
             const SizedBox(height: 6),
             Text(
               detail!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: CccColors.body),
+              style: TextStyle(fontSize: 13, color: p.textMuted),
             ),
           ],
         ],
@@ -287,7 +281,7 @@ class _PickerNotice extends StatelessWidget {
   }
 }
 
-/// "Your branch" field on the sign up form, styled like the text fields.
+/// "Your branch" on the sign up form, styled like the text fields.
 class BranchPickerField extends StatelessWidget {
   const BranchPickerField({
     required this.branch,
@@ -310,53 +304,55 @@ class BranchPickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final branch = this.branch;
-    return Semantics(
-      button: true,
-      label: branch == null ? 'Choose your branch' : 'Branch, ${branch.name}',
-      excludeSemantics: true,
-      // The box sits outside the Material so its drop shadow isn't clipped.
-      child: Container(
-        height: 60,
-        decoration: AuthField.decoration,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: () => _pick(context),
-            borderRadius: BorderRadius.circular(8),
-            child: Row(
-              children: [
-                const SizedBox(
-                  width: 58,
-                  child: Center(
-                    child: Icon(
-                      Icons.church_outlined,
-                      size: 26,
-                      color: CccColors.ink,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const FieldLabel('Your branch'),
+        const SizedBox(height: 6),
+        Semantics(
+          button: true,
+          label: branch == null
+              ? 'Choose your branch'
+              : 'Branch, ${branch.name}',
+          excludeSemantics: true,
+          child: Material(
+            color: p.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: p.lineStrong),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => _pick(context),
+              child: SizedBox(
+                height: 52,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 14),
+                    Icon(Icons.church_outlined, size: 20, color: p.textMuted),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        branch?.name ?? 'Select a branch',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: branch == null ? p.textMuted : p.text,
+                        ),
+                      ),
                     ),
-                  ),
+                    Icon(Icons.expand_more, size: 22, color: p.textMuted),
+                    const SizedBox(width: 10),
+                  ],
                 ),
-                Expanded(
-                  child: Text(
-                    branch?.name ?? 'Your Branch',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: branch == null
-                          ? AuthField.hintColor
-                          : CccColors.ink,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.expand_more, size: 26, color: CccColors.ink),
-                const SizedBox(width: 14),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

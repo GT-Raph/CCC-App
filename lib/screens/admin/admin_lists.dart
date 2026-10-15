@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../models/admin_drafts.dart';
 import '../../models/event.dart' show eventDateLabel;
@@ -51,6 +50,7 @@ class AdminHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = CccScope.of(context);
     final role = state.staff.role;
+    final p = context.palette;
     final bottom = MediaQuery.paddingOf(context).bottom;
     String scope() {
       if (role == null) return '';
@@ -61,58 +61,54 @@ class AdminHomeScreen extends StatelessWidget {
       return 'Branch staff';
     }
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
-      child: Scaffold(
-        backgroundColor: CccColors.background,
-        body: Column(
-          children: [
-            const DetailsHeader(title: 'Church content'),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + bottom),
-                children: [
-                  if (role != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Text(
-                        scope(),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: CccColors.body,
-                        ),
+    return Scaffold(
+      body: Column(
+        children: [
+          const DetailsHeader(title: 'Church content'),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + bottom),
+              children: [
+                if (role != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      scope(),
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                        color: p.textMuted,
                       ),
                     ),
-                  for (final kind in ContentKind.values) ...[
-                    _HubTile(
-                      icon: _icons[kind]!,
-                      title: kind.title,
-                      subtitle: _descriptions[kind]!,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AdminListScreen(kind: kind),
-                        ),
+                  ),
+                for (final kind in ContentKind.values) ...[
+                  _HubTile(
+                    icon: _icons[kind]!,
+                    title: kind.title,
+                    subtitle: _descriptions[kind]!,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => AdminListScreen(kind: kind),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (role?.churchWide ?? false)
-                    _HubTile(
-                      icon: Icons.badge_outlined,
-                      title: 'Staff',
-                      subtitle: 'Who can post, and for which branch',
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const StaffScreen(),
-                        ),
-                      ),
-                    ),
+                  ),
+                  const SizedBox(height: 12),
                 ],
-              ),
+                if (role?.churchWide ?? false)
+                  _HubTile(
+                    icon: Icons.badge_outlined,
+                    title: 'Staff',
+                    subtitle: 'Who can post, and for which branch',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const StaffScreen(),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -133,53 +129,44 @@ class _HubTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: CccColors.paper,
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: CccColors.primaryTint,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: CccColors.ink),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: CccColors.ink,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: CccColors.body,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: CccColors.ink),
-            ],
+    final p = context.palette;
+    return CccCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: p.accentTint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: p.accentText),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w700,
+                    color: p.text,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 14, color: p.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: p.textMuted),
+        ],
       ),
     );
   }
@@ -237,56 +224,54 @@ class _AdminListScreenState extends State<AdminListScreen> {
     final kind = widget.kind;
     final rows = this.rows;
     final bottom = MediaQuery.paddingOf(context).bottom;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
-      child: Scaffold(
-        backgroundColor: CccColors.background,
-        floatingActionButton: Padding(
-          padding: EdgeInsets.only(bottom: bottom > 0 ? 0 : 8),
-          child: FloatingActionButton.extended(
-            onPressed: () => _open(),
-            backgroundColor: CccColors.primary,
-            foregroundColor: CccColors.ink,
-            icon: const Icon(Icons.add),
-            label: Text(
-              'New ${kind.noun}',
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+    return Scaffold(
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: bottom > 0 ? 0 : 8),
+        child: FloatingActionButton.extended(
+          onPressed: () => _open(),
+          backgroundColor: CccColors.primary,
+          foregroundColor: CccColors.onPrimary,
+          elevation: 2,
+          shape: const StadiumBorder(),
+          icon: const Icon(Icons.add),
+          label: Text(
+            'New ${kind.noun}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
-        body: Column(
-          children: [
-            DetailsHeader(title: kind.title),
-            Expanded(
-              child: RefreshIndicator(
-                color: CccColors.primary,
-                onRefresh: _load,
-                child: ListView(
-                  padding: EdgeInsets.fromLTRB(20, 20, 20, 96 + bottom),
-                  children: [
-                    if (error != null)
-                      _Message(text: error!, action: 'Try again', onTap: _load)
-                    else if (rows == null)
-                      const SkeletonList(label: 'Loading', count: 3)
-                    else if (rows.isEmpty)
-                      _Message(
-                        text: 'Nothing here yet. Add the first ${kind.noun}.',
-                      )
-                    else
-                      for (final row in rows) ...[
-                        _ContentRow(
-                          kind: kind,
-                          row: row,
-                          onTap: () => _open(id: row['id'] as String),
-                        ),
-                        const SizedBox(height: 10),
-                      ],
-                  ],
-                ),
+      ),
+      body: Column(
+        children: [
+          DetailsHeader(title: kind.title),
+          Expanded(
+            child: RefreshIndicator(
+              color: CccColors.primary,
+              onRefresh: _load,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 96 + bottom),
+                children: [
+                  if (error != null)
+                    _Message(text: error!, action: 'Try again', onTap: _load)
+                  else if (rows == null)
+                    const SkeletonList(label: 'Loading', count: 3)
+                  else if (rows.isEmpty)
+                    _Message(
+                      text: 'Nothing here yet. Add the first ${kind.noun}.',
+                    )
+                  else
+                    for (final row in rows) ...[
+                      _ContentRow(
+                        kind: kind,
+                        row: row,
+                        onTap: () => _open(id: row['id'] as String),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -330,78 +315,66 @@ class _ContentRow extends StatelessWidget {
       ContentKind.sermons => ((row['preacher'] as String?) ?? '', null),
       ContentKind.ministries => ((row['focus'] as String?) ?? '', null),
     };
+    final p = context.palette;
     final where = row['for_all_branches'] == true
         ? '${branch ?? ''}, for all branches'
         : branch ??
               (kind == ContentKind.ministries ? 'Church-wide' : 'All branches');
 
-    return Material(
-      color: CccColors.paper,
-      borderRadius: BorderRadius.circular(10),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.25,
-                        color: CccColors.ink,
-                      ),
+    return CccCard(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
+                      color: p.text,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      [where, if (detail.isNotEmpty) detail].join('\n'),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        height: 1.35,
-                        color: CccColors.body,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    [where, if (detail.isNotEmpty) detail].join('\n'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: p.textSecondary,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            if (status != null) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: status == 'Scheduled' ? p.accentTint : p.surfaceAlt,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: status == 'Scheduled'
+                        ? p.accentText
+                        : p.textSecondary,
+                  ),
                 ),
               ),
-              if (status != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: status == 'Scheduled'
-                        ? CccColors.primaryTint
-                        : CccColors.background,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: status == 'Scheduled'
-                          ? CccColors.primary
-                          : CccColors.border,
-                    ),
-                  ),
-                  child: Text(
-                    status,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: CccColors.ink,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(width: 4),
-              const Icon(Icons.edit_outlined, size: 20, color: CccColors.ink),
             ],
-          ),
+            const SizedBox(width: 4),
+            Icon(Icons.edit_outlined, size: 20, color: p.textMuted),
+          ],
         ),
       ),
     );
@@ -424,7 +397,10 @@ class _Message extends StatelessWidget {
           Text(
             text,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, color: CccColors.body),
+            style: TextStyle(
+              fontSize: 16,
+              color: context.palette.textSecondary,
+            ),
           ),
           if (action != null) ...[
             const SizedBox(height: 16),
@@ -483,22 +459,23 @@ class _SignupsScreenState extends State<SignupsScreen> {
   @override
   Widget build(BuildContext context) {
     final signups = this.signups;
+    final p = context.palette;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      backgroundColor: CccColors.background,
       body: Column(
         children: [
           const DetailsHeader(title: 'Who has joined'),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + bottom),
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + bottom),
               children: [
                 Text(
                   widget.ministryName,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: CccColors.navy,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                    color: p.text,
                   ),
                 ),
                 if (signups != null)
@@ -508,10 +485,7 @@ class _SignupsScreenState extends State<SignupsScreen> {
                       signups.length == 1
                           ? '1 member'
                           : '${signups.length} members',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: CccColors.body,
-                      ),
+                      style: TextStyle(fontSize: 15, color: p.textSecondary),
                     ),
                   ),
                 if (error != null)
@@ -521,21 +495,18 @@ class _SignupsScreenState extends State<SignupsScreen> {
                 else if (signups.isEmpty)
                   const _Message(text: 'No one has joined from the app yet.')
                 else
-                  Material(
-                    color: CccColors.paper,
-                    borderRadius: BorderRadius.circular(10),
+                  CccCard(
                     child: Column(
                       children: [
                         for (final (index, signup) in signups.indexed) ...[
-                          if (index > 0)
-                            const Divider(height: 1, color: CccColors.border),
+                          if (index > 0) const Divider(height: 1),
                           ListTile(
                             title: Text(
                               signup.member,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: CccColors.ink,
+                                color: p.text,
                               ),
                             ),
                             subtitle: Text(
@@ -543,9 +514,9 @@ class _SignupsScreenState extends State<SignupsScreen> {
                                 ?signup.branch,
                                 'Joined ${eventDateLabel(signup.joinedAt).split(',').first}',
                               ].join('\n'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: CccColors.body,
+                                color: p.textSecondary,
                               ),
                             ),
                           ),
@@ -562,7 +533,7 @@ class _SignupsScreenState extends State<SignupsScreen> {
   }
 }
 
-/// Church-wide admins add and remove staff here.
+/// HQ admins add and remove staff here.
 class StaffScreen extends StatefulWidget {
   const StaffScreen({super.key});
 
@@ -649,16 +620,16 @@ class _StaffScreenState extends State<StaffScreen> {
     final state = CccScope.of(context);
     final me = state.staff.email?.toLowerCase();
     final staff = this.staff;
+    final p = context.palette;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      backgroundColor: CccColors.background,
       body: Column(
         children: [
           const DetailsHeader(title: 'Staff'),
           Expanded(
             child: ListView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + bottom),
+              padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + bottom),
               children: [
                 FormSection(
                   title: 'Give someone access',
@@ -688,68 +659,56 @@ class _StaffScreenState extends State<StaffScreen> {
                     CccButton(
                       label: 'Add staff',
                       isLoading: busy,
-                      height: 50,
-                      fontSize: 16,
                       onPressed: _add,
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Current staff',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: CccColors.navy,
-                  ),
-                ),
+                const SectionTitle('Current staff'),
                 const SizedBox(height: 12),
                 if (error != null)
                   _Message(text: error!, action: 'Try again', onTap: _load)
                 else if (staff == null)
                   const SkeletonList(label: 'Loading', count: 2)
                 else
-                  Material(
-                    color: CccColors.paper,
-                    borderRadius: BorderRadius.circular(10),
+                  CccCard(
                     child: Column(
                       children: [
                         for (final (index, member) in staff.indexed) ...[
-                          if (index > 0)
-                            const Divider(height: 1, color: CccColors.border),
+                          if (index > 0) const Divider(height: 1),
                           ListTile(
                             title: Text(
                               member.email,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
-                                color: CccColors.ink,
+                                color: p.text,
                               ),
                             ),
                             subtitle: Text(
                               member.branchId == null
                                   ? 'HQ admin, every branch'
                                   : '${member.branchName ?? 'Branch'} staff',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: CccColors.body,
+                                color: p.textSecondary,
                               ),
                             ),
                             // Removing yourself would lock you out.
                             trailing: member.email == me
-                                ? const Text(
+                                ? Text(
                                     'You',
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: CccColors.muted,
+                                      color: p.textMuted,
                                     ),
                                   )
                                 : IconButton(
                                     tooltip: 'Remove ${member.email}',
                                     onPressed: () => _remove(member),
-                                    icon: const Icon(
+                                    icon: Icon(
                                       Icons.person_remove_outlined,
-                                      color: CccColors.error,
+                                      color: p.error,
                                     ),
                                   ),
                           ),
@@ -794,12 +753,11 @@ class StaffEditButton extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return Padding(
-      padding: const EdgeInsets.only(top: 20),
+      padding: const EdgeInsets.only(top: 28),
       child: CccButton(
         label: 'Edit ${kind.noun}',
-        variant: CccButtonVariant.white,
-        iconGap: 12,
-        icon: const Icon(Icons.edit_outlined, size: 26),
+        variant: CccButtonVariant.tonal,
+        icon: const Icon(Icons.edit_outlined),
         onPressed: () async {
           final result = await openEditor(context, kind, id: id);
           if (result != null && context.mounted) Navigator.of(context).pop();

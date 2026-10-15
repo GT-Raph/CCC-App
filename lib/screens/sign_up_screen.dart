@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../models/church_branch.dart';
 import '../navigation.dart';
 import '../services/auth_service.dart';
-import '../theme/ccc_theme.dart';
 import '../widgets/branch_picker.dart';
 import '../widgets/ccc_widgets.dart';
 
@@ -97,89 +95,86 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
-      child: Scaffold(
-        resizeToAvoidBottomInset: false,
-        body: PhotoBackground(
-          photoTop: -167 / 932,
-          child: AutofillGroup(
-            child: FullScreenColumn(
-              bottomGap: 14,
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      body: AutofillGroup(
+        child: FullScreenColumn(
+          topGap: 8,
+          bottomGap: 8,
+          children: [
+            const AuthBackButton(),
+            const SizedBox(height: 16),
+            const AuthTitle(
+              title: 'Create your account',
+              subtitle:
+                  'Choose your branch to get its sermons, events and live '
+                  'services.',
+            ),
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 60),
-                const ChurchLogo(width: 117, color: CccColors.paper),
-                const Spacer(flex: 31),
-                const AuthTitle(
-                  title: 'Create Account',
-                  subtitle:
-                      'Choose your branch to get its sermons, events and live '
-                      'services.',
+                Expanded(
+                  child: AuthField(
+                    label: 'First name',
+                    controller: firstNameController,
+                    textCapitalization: TextCapitalization.words,
+                    autofillHints: const [AutofillHints.givenName],
+                  ),
                 ),
-                const Spacer(flex: 36),
-                AuthField(
-                  icon: FieldIcons.person,
-                  hint: 'First Name',
-                  controller: firstNameController,
-                  textCapitalization: TextCapitalization.words,
-                  autofillHints: const [AutofillHints.givenName],
-                ),
-                const SizedBox(height: 14),
-                AuthField(
-                  icon: FieldIcons.person,
-                  hint: 'Last Name',
-                  controller: lastNameController,
-                  textCapitalization: TextCapitalization.words,
-                  autofillHints: const [AutofillHints.familyName],
-                ),
-                const SizedBox(height: 14),
-                AuthField(
-                  icon: FieldIcons.email,
-                  hint: 'Email',
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const [AutofillHints.email],
-                ),
-                const SizedBox(height: 14),
-                AuthField(
-                  icon: FieldIcons.key,
-                  hint: 'Password',
-                  controller: passwordController,
-                  isPassword: true,
-                  autofillHints: const [AutofillHints.newPassword],
-                ),
-                const SizedBox(height: 14),
-                AuthField(
-                  icon: FieldIcons.key,
-                  hint: 'Confirm Password',
-                  controller: confirmController,
-                  isPassword: true,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.newPassword],
-                  onSubmitted: (_) => _submit(),
-                ),
-                const SizedBox(height: 14),
-                BranchPickerField(
-                  branch: branch,
-                  onChanged: (value) => setState(() => branch = value),
-                ),
-                // Keeps the button off the last field on short screens.
-                const SizedBox(height: 22),
-                const Spacer(flex: 54),
-                CccButton(
-                  label: 'Sign up',
-                  onPressed: _submit,
-                  isLoading: isSubmitting,
-                ),
-                const SizedBox(height: 15),
-                AuthFooterLink(
-                  prompt: 'Have an account?',
-                  action: 'Login',
-                  onTap: () => CccNavigation.openLogin(context, replace: true),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AuthField(
+                    label: 'Last name',
+                    controller: lastNameController,
+                    textCapitalization: TextCapitalization.words,
+                    autofillHints: const [AutofillHints.familyName],
+                  ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            AuthField(
+              label: 'Email',
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
+            ),
+            const SizedBox(height: 16),
+            AuthField(
+              label: 'Password',
+              controller: passwordController,
+              isPassword: true,
+              autofillHints: const [AutofillHints.newPassword],
+            ),
+            const SizedBox(height: 16),
+            AuthField(
+              label: 'Confirm password',
+              controller: confirmController,
+              isPassword: true,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.newPassword],
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 16),
+            BranchPickerField(
+              branch: branch,
+              onChanged: (value) => setState(() => branch = value),
+            ),
+            const SizedBox(height: 28),
+            CccButton(
+              label: 'Create account',
+              onPressed: _submit,
+              isLoading: isSubmitting,
+            ),
+            const Spacer(),
+            const SizedBox(height: 16),
+            AuthFooterLink(
+              prompt: 'Have an account?',
+              action: 'Log in',
+              onTap: () => CccNavigation.openLogin(context, replace: true),
+            ),
+          ],
         ),
       ),
     );

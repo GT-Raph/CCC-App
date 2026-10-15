@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/admin_drafts.dart';
 import '../models/ministry.dart';
 import '../services/auth_service.dart';
 import '../services/external_actions.dart';
 import '../state/ccc_state.dart';
-import '../theme/ccc_theme.dart';
 import '../widgets/cards.dart';
 import '../widgets/ccc_widgets.dart';
-import '../widgets/media.dart';
+import '../widgets/details_scaffold.dart';
 import 'admin/admin_lists.dart';
 
 /// Joins or leaves [ministry] for a member, saved to their account; guests
@@ -50,77 +48,71 @@ class MinistryDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final joined = CccScope.of(context).ministries.hasJoined(ministry.id);
-    final bottom = MediaQuery.paddingOf(context).bottom;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
-      child: Scaffold(
-        backgroundColor: CccColors.background,
-        body: Column(
-          children: [
-            const DetailsHeader(title: 'Details'),
+    final directory = CccScope.of(context).ministries;
+    return ListenableBuilder(
+      listenable: directory,
+      builder: (context, _) {
+        final joined = directory.hasJoined(ministry.id);
+        final facts = [
+          if (ministry.meets.isNotEmpty)
+            InfoRow(icon: Icons.schedule, label: 'Meets', text: ministry.meets),
+          if (ministry.venue.isNotEmpty)
+            InfoRow(
+              icon: Icons.location_on_outlined,
+              label: 'Where',
+              text: ministry.venue,
+            ),
+          if (ministry.members.isNotEmpty)
+            InfoRow(
+              icon: Icons.groups_outlined,
+              text: '${ministry.members} members',
+            ),
+        ];
+        return DetailsScaffold(
+          images: ministry.images,
+          actions: [
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: 14 + bottom),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (ministry.images.isNotEmpty)
-                      ImageCarousel(
-                        images: ministry.images,
-                        height: 200,
-                        dotsBottom: 20,
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          MinistryInfo(ministry: ministry),
-                          const SizedBox(height: 32),
-                          Builder(
-                            builder: (buttonContext) => CccButton(
-                              label: 'Share',
-                              variant: CccButtonVariant.outlined,
-                              iconGap: 19,
-                              icon: const Icon(Icons.share, size: 31),
-                              onPressed: () => ExternalActions.share(
-                                buttonContext,
-                                ministry.shareText,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          CccButton(
-                            label: joined ? 'Joined' : 'Join Ministry',
-                            variant: joined
-                                ? CccButtonVariant.outlined
-                                : CccButtonVariant.filled,
-                            iconGap: 8,
-                            icon: joined
-                                ? const Icon(Icons.check_rounded, size: 26)
-                                : null,
-                            onPressed: () => joinOrLeaveMinistry(
-                              context,
-                              ministry,
-                              member: member,
-                            ),
-                          ),
-                          StaffEditButton(
-                            kind: ContentKind.ministries,
-                            id: ministry.id,
-                            branchId: ministry.branchId,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              child: CccButton(
+                label: joined ? 'Joined' : 'Join ministry',
+                variant: joined
+                    ? CccButtonVariant.tonal
+                    : CccButtonVariant.filled,
+                icon: joined ? const Icon(Icons.check_rounded) : null,
+                onPressed: () =>
+                    joinOrLeaveMinistry(context, ministry, member: member),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Builder(
+              builder: (buttonContext) => ShareButton(
+                onPressed: () =>
+                    ExternalActions.share(buttonContext, ministry.shareText),
               ),
             ),
           ],
-        ),
-      ),
+          children: [
+            if (ministry.focus.isNotEmpty) ...[
+              DetailsEyebrow(ministry.focus),
+              const SizedBox(height: 6),
+            ],
+            DetailsTitle(ministry.name),
+            if (facts.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              InfoGroup(rows: facts),
+            ],
+            if (ministry.about.isNotEmpty)
+              DetailsSection(
+                title: 'About',
+                child: DetailsBody(ministry.about),
+              ),
+            StaffEditButton(
+              kind: ContentKind.ministries,
+              id: ministry.id,
+              branchId: ministry.branchId,
+            ),
+          ],
+        );
+      },
     );
   }
 }

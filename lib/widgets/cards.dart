@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -13,10 +11,98 @@ import '../theme/ccc_theme.dart';
 import 'ccc_widgets.dart';
 import 'media.dart';
 
-const _cardRadius = BorderRadius.all(Radius.circular(20));
-const _eventCardRadius = BorderRadius.all(Radius.circular(10));
+const _months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
-/// "News by church" card on the Home tab.
+/// A small muted icon followed by text, for when and where something is.
+class MetaRow extends StatelessWidget {
+  const MetaRow({
+    required this.icon,
+    required this.text,
+    this.maxLines,
+    super.key,
+  });
+
+  final IconData icon;
+  final String text;
+  final int? maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 16, color: p.textMuted),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: maxLines,
+            overflow: maxLines == null ? null : TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 14, height: 1.4, color: p.textSecondary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Which branch something belongs to, above its title.
+class _Eyebrow extends StatelessWidget {
+  const _Eyebrow(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Row(
+      children: [
+        Icon(Icons.church_outlined, size: 14, color: p.textMuted),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+              color: p.textMuted,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+TextStyle _cardTitle(CccPalette p, [double size = 18]) => TextStyle(
+  fontSize: size,
+  fontWeight: FontWeight.w700,
+  height: 1.3,
+  letterSpacing: -0.2,
+  color: p.text,
+);
+
+/// A news story on the Home tab.
 class NewsCard extends StatelessWidget {
   const NewsCard({
     required this.item,
@@ -31,135 +117,109 @@ class NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: CccColors.paper,
-      borderRadius: _cardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onDetails,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 15, top: 5, right: 5),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(
-                        item.title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          height: 1.2,
-                          color: CccColors.navy,
-                        ),
-                      ),
+    final p = context.palette;
+    return CccCard(
+      onTap: onDetails,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (item.images.isNotEmpty)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: CccPhoto(item.images.first),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 4, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Eyebrow(item.church),
+                        const SizedBox(height: 8),
+                        Text(item.title, style: _cardTitle(p)),
+                        if (item.subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.subtitle,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              height: 1.4,
+                              color: p.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  ShareIconButton(onPressed: onShare, size: 24),
-                ],
-              ),
-            ),
-            if (item.subtitle.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              _padded(
-                Text(
-                  item.subtitle,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    height: 1.25,
-                    color: CccColors.body,
-                  ),
                 ),
-              ),
-            ],
-            const SizedBox(height: 10),
-            _padded(
-              IconTextRow(
-                icon: Icons.church,
-                iconSize: 16,
-                iconTop: 1,
-                gutter: 22,
-                text: item.church,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  height: 18 / 14,
-                  color: CccColors.body,
+                ShareIconButton(onPressed: onShare),
+              ],
+            ),
+          ),
+          if (item.summary.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(
+                item.summary,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14.5,
+                  height: 1.5,
+                  color: p.textSecondary,
                 ),
               ),
             ),
-            if (item.summary.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _padded(
-                Text(
-                  item.summary,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 20 / 14,
-                    color: CccColors.body,
-                  ),
-                ),
-              ),
-            ],
-            if (item.images.isNotEmpty) ...[
-              const SizedBox(height: 15),
-              ImageStrip(images: item.images),
-            ],
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: DetailsLink(onTap: onDetails),
-              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: DetailsLink(label: 'Read story', onTap: onDetails),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-
-  Widget _padded(Widget child) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 15),
-    child: child,
-  );
 }
 
-/// "Details →": navy text with the brand-yellow arrow, 44px tall to tap.
+/// A gold text link with an arrow, 44px tall to tap.
 class DetailsLink extends StatelessWidget {
-  const DetailsLink({required this.onTap, super.key});
+  const DetailsLink({required this.onTap, this.label = 'Details', super.key});
 
   final VoidCallback onTap;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: const SizedBox(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
         height: 44,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Details',
+                label,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   height: 1,
-                  color: CccColors.navy,
+                  color: p.accentText,
                 ),
               ),
-              SizedBox(width: 6),
-              Icon(Icons.arrow_forward, size: 20, color: CccColors.primary),
+              const SizedBox(width: 6),
+              Icon(Icons.arrow_forward, size: 16, color: p.accentText),
             ],
           ),
         ),
@@ -170,10 +230,9 @@ class DetailsLink extends StatelessWidget {
 
 /// Share icon with a full 44px touch target around it.
 class ShareIconButton extends StatelessWidget {
-  const ShareIconButton({required this.onPressed, this.size = 30, super.key});
+  const ShareIconButton({required this.onPressed, super.key});
 
   final VoidCallback onPressed;
-  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -182,12 +241,16 @@ class ShareIconButton extends StatelessWidget {
       label: 'Share',
       excludeSemantics: true,
       child: SizedBox.square(
-        dimension: size > 44 ? size : 44,
+        dimension: 44,
         child: InkResponse(
           onTap: onPressed,
-          radius: 24,
+          radius: 22,
           child: Center(
-            child: Icon(Icons.share, size: size, color: CccColors.ink),
+            child: Icon(
+              Icons.share_outlined,
+              size: 20,
+              color: context.palette.textMuted,
+            ),
           ),
         ),
       ),
@@ -195,157 +258,52 @@ class ShareIconButton extends StatelessWidget {
   }
 }
 
-/// Title, church, date, host, address and description rows shared by the
-/// event card and the event details screen.
-class EventInfo extends StatelessWidget {
-  const EventInfo({required this.event, this.compact = false, super.key});
+/// Month and day in a gold-washed tile, so dates can be scanned down a list.
+class DateTile extends StatelessWidget {
+  const DateTile({required this.date, super.key});
 
-  final Event event;
-
-  /// On a card: the address and description are cut short; the details
-  /// screen shows them in full.
-  final bool compact;
-
-  static const _rowStyle = TextStyle(
-    fontSize: 16,
-    height: 21 / 16,
-    color: CccColors.body,
-  );
+  final DateTime date;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          event.title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            height: 1,
-            color: CccColors.navy,
-          ),
+    final p = context.palette;
+    return ExcludeSemantics(
+      child: Container(
+        width: 52,
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: p.accentTint,
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 20),
-        IconTextRow(
-          icon: Icons.church,
-          iconSize: 18,
-          text: event.churchLabel,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            height: 1,
-            color: CccColors.body,
-          ),
-        ),
-        const SizedBox(height: 15),
-        IconTextRow(
-          glyph: const CustomPaint(
-            size: Size(14, 16),
-            painter: _CalendarGlyph(),
-          ),
-          iconLeft: 3,
-          iconTop: 2,
-          text: event.dateLabel,
-          style: _rowStyle,
-        ),
-        const SizedBox(height: 15),
-        IconTextRow(
-          icon: Icons.person,
-          iconSize: 22,
-          iconLeft: -2,
-          iconTop: -1,
-          text: event.host,
-          style: _rowStyle,
-        ),
-        const SizedBox(height: 15),
-        IconTextRow(
-          icon: Icons.location_on,
-          iconSize: 19,
-          iconLeft: -1,
-          iconTop: 1,
-          text: event.address,
-          style: _rowStyle,
-          maxLines: compact ? 2 : null,
-        ),
-        const SizedBox(height: 15),
-        IconTextRow(
-          glyph: const CustomPaint(size: Size(15, 15), painter: _ChatGlyph()),
-          iconLeft: 3,
-          iconTop: 2,
-          text: event.description,
-          style: _rowStyle,
-          maxLines: compact ? 3 : null,
-        ),
-      ],
-    );
-  }
-}
-
-/// A yellow icon in a 27px gutter followed by text, as in the event rows.
-class IconTextRow extends StatelessWidget {
-  const IconTextRow({
-    required this.text,
-    required this.style,
-    this.icon,
-    this.glyph,
-    this.iconSize = 18,
-    this.iconLeft = 0,
-    this.iconTop = 0,
-    this.gutter = 27,
-    this.maxLines,
-    super.key,
-  });
-
-  final IconData? icon;
-
-  /// A drawn icon used instead of [icon] where Material has no match.
-  final Widget? glyph;
-  final String text;
-  final TextStyle style;
-  final double iconSize;
-  final double iconLeft;
-  final double iconTop;
-  final double gutter;
-
-  /// Cuts the text short with an ellipsis.
-  final int? maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: gutter,
-          height: 1,
-          child: OverflowBox(
-            alignment: Alignment.topLeft,
-            minWidth: 0,
-            minHeight: 0,
-            maxWidth: double.infinity,
-            maxHeight: double.infinity,
-            child: Transform.translate(
-              offset: Offset(iconLeft, iconTop),
-              child:
-                  glyph ?? Icon(icon, size: iconSize, color: CccColors.primary),
+        child: Column(
+          children: [
+            Text(
+              _months[date.month - 1],
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+                color: p.accentText,
+              ),
             ),
-          ),
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+                color: p.text,
+              ),
+            ),
+          ],
         ),
-        Expanded(
-          child: Text(
-            text,
-            style: style,
-            maxLines: maxLines,
-            overflow: maxLines == null ? null : TextOverflow.ellipsis,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
 
-/// "Events near me" card.
+/// An event on the Events tab: its photo (if any), date, title, branch and
+/// the one thing to do about it.
 class EventCard extends StatelessWidget {
   const EventCard({
     required this.event,
@@ -361,7 +319,7 @@ class EventCard extends StatelessWidget {
   final bool reminded;
   final VoidCallback onOpen;
 
-  /// Join Now, Remind Me / Reminded, or Watch Live while [live].
+  /// Join now, Remind me / Reminded, or Watch live while [live].
   final VoidCallback onAction;
   final VoidCallback onShare;
 
@@ -370,131 +328,292 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: CccColors.paper,
-      borderRadius: _eventCardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+    final p = context.palette;
+    final start = event.startsAt;
+    return CccCard(
+      onTap: onOpen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (event.images.isNotEmpty)
             ImageCarousel(
               images: event.images,
-              height: 164,
+              height: 176,
               isLive: live != null,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-              child: EventInfo(event: event, compact: true),
-            ),
-            const SizedBox(height: 20),
-            Row(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Spacer(flex: 53),
-                SizedBox.square(
-                  dimension: 44,
-                  child: InkResponse(
-                    onTap: onOpen,
-                    radius: 24,
-                    child: const Center(
-                      child: Icon(
-                        Icons.info_outline,
-                        size: 31,
-                        color: CccColors.ink,
-                        semanticLabel: 'Event details',
+                if (start != null) ...[
+                  DateTile(date: start),
+                  const SizedBox(width: 14),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (live != null && event.images.isEmpty) ...[
+                        const LiveBadge(),
+                        const SizedBox(height: 8),
+                      ],
+                      Text(
+                        event.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: _cardTitle(p, 17),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Text(
+                        event.dateLabel,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: p.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        event.churchLabel,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                          color: p.textMuted,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 21.5),
-                EventActionButton(
-                  event: event,
-                  reminded: reminded,
-                  live: live != null,
-                  onPressed: onAction,
-                  width: 188,
-                  height: 44,
-                  fontSize: 14,
-                ),
-                const SizedBox(width: 21),
-                ShareIconButton(onPressed: onShare),
-                const Spacer(flex: 37),
               ],
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+          if (event.description.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Text(
+                event.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: p.textSecondary,
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 6, 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: EventActionButton(
+                    event: event,
+                    reminded: reminded,
+                    live: live != null,
+                    onPressed: onAction,
+                    height: 44,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                ShareIconButton(onPressed: onShare),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Watch Live while the event is streaming, otherwise Join Now / Remind Me /
-/// Reminded, depending on the event and the member's reminder.
+/// Watch live while the event is streaming, otherwise Join now / Remind me /
+/// Reminded, depending on the event and the member's reminder. [prominent]
+/// makes Remind me the gold main action, as on the details screen.
 class EventActionButton extends StatelessWidget {
   const EventActionButton({
     required this.event,
     required this.reminded,
     required this.onPressed,
     this.live = false,
+    this.prominent = false,
     this.width,
-    this.height = 60,
-    this.fontSize = 20,
-    this.joinVariant = CccButtonVariant.outlined,
+    this.height = 52,
+    this.fontSize = 16,
     super.key,
   });
 
   final Event event;
   final bool reminded;
   final VoidCallback onPressed;
+  final bool prominent;
   final double? width;
   final double height;
   final double fontSize;
-  final CccButtonVariant joinVariant;
   final bool live;
 
   @override
   Widget build(BuildContext context) {
     if (live) {
       return CccButton(
-        label: 'Watch Live',
+        label: 'Watch live',
         onPressed: onPressed,
         width: width,
         height: height,
         fontSize: fontSize,
         iconGap: 6,
-        icon: Icon(Icons.play_arrow_rounded, size: fontSize + 8),
+        icon: const Icon(Icons.play_arrow_rounded),
       );
     }
     if (event.joinable) {
       return CccButton(
-        label: 'Join Now',
+        label: 'Join now',
         onPressed: onPressed,
-        variant: joinVariant,
+        variant: prominent
+            ? CccButtonVariant.filled
+            : CccButtonVariant.outlined,
         width: width,
         height: height,
         fontSize: fontSize,
+        iconGap: 6,
+        icon: const Icon(Icons.open_in_new),
       );
     }
     return CccButton(
-      label: reminded ? 'Reminded' : 'Remind Me',
+      label: reminded ? 'Reminded' : 'Remind me',
       onPressed: onPressed,
-      variant: reminded ? CccButtonVariant.filled : CccButtonVariant.outlined,
+      variant: reminded
+          ? CccButtonVariant.tonal
+          : prominent
+          ? CccButtonVariant.filled
+          : CccButtonVariant.outlined,
       width: width,
       height: height,
       fontSize: fontSize,
       iconGap: 8,
-      icon: Transform.rotate(
-        angle: -math.pi / 9,
-        child: Icon(Icons.notifications, size: fontSize + 4),
+      icon: Icon(
+        reminded
+            ? Icons.notifications_active
+            : Icons.notifications_none_outlined,
       ),
     );
   }
 }
 
-/// A church branch from Google Maps on the Church tab ("Our Savior's
-/// Church" card in the design).
+/// A list of facts with hairlines between them, as on the details screens.
+class InfoGroup extends StatelessWidget {
+  const InfoGroup({required this.rows, super.key});
+
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return CccCard(
+      child: Column(
+        children: [
+          for (final (index, row) in rows.indexed) ...[
+            if (index > 0) const Divider(height: 1, indent: 50),
+            row,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One fact in an [InfoGroup]; with [onTap] it opens something (call,
+/// email, map).
+class InfoRow extends StatelessWidget {
+  const InfoRow({
+    required this.icon,
+    required this.text,
+    this.label,
+    this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final String text;
+  final String? label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final content = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 13, 12, 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 20, color: p.textMuted),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (label != null) ...[
+                  Text(
+                    label!,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                      color: p.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
+                Text(
+                  text,
+                  style: TextStyle(fontSize: 15.5, height: 1.4, color: p.text),
+                ),
+              ],
+            ),
+          ),
+          if (onTap != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 6, top: 1),
+              child: Icon(Icons.chevron_right, size: 20, color: p.textMuted),
+            ),
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return InkWell(onTap: onTap, child: content);
+  }
+}
+
+/// When, where and who for an event, on its details and live screens. The
+/// branch is in the eyebrow above the title.
+class EventFacts extends StatelessWidget {
+  const EventFacts({required this.event, this.onAddress, super.key});
+
+  final Event event;
+  final VoidCallback? onAddress;
+
+  @override
+  Widget build(BuildContext context) {
+    return InfoGroup(
+      rows: [
+        InfoRow(icon: Icons.event_outlined, text: event.dateLabel),
+        if (event.host.isNotEmpty)
+          InfoRow(icon: Icons.person_outline, label: 'Host', text: event.host),
+        if (event.address.isNotEmpty)
+          InfoRow(
+            icon: Icons.location_on_outlined,
+            text: event.address,
+            onTap: onAddress,
+          ),
+      ],
+    );
+  }
+}
+
+/// A church branch from Google Maps on the Church tab.
 class BranchCard extends StatelessWidget {
   const BranchCard({
     required this.branch,
@@ -511,92 +630,41 @@ class BranchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Google listing names can run to two lines, so give them some leading.
-    const nameStyle = TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
-      height: 1.25,
-      color: CccColors.ink,
-    );
-    const addressStyle = TextStyle(
-      fontSize: 14,
-      height: 18 / 14,
-      color: CccColors.ink,
-    );
-    const metaStyle = TextStyle(
-      fontSize: 14,
-      height: 16 / 14,
-      color: CccColors.ink,
-    );
+    final p = context.palette;
     final distance = branch.distanceLabel;
-
-    return Material(
-      color: CccColors.paper,
-      borderRadius: _eventCardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 20, bottom: 34),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  NetworkPhotoStrip(
-                    photos: [
-                      for (final photo in branch.photos)
-                        (url: photoUrl(photo.name), credit: photo.author),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 13, right: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        IconTextRow(
-                          icon: Icons.church,
-                          iconSize: 18,
-                          gutter: 24,
-                          text: branch.name,
-                          style: nameStyle,
-                        ),
-                        const SizedBox(height: 20),
-                        IconTextRow(
-                          icon: Icons.location_on,
-                          iconSize: 19,
-                          iconLeft: -1,
-                          iconTop: 1,
-                          gutter: 24,
-                          text: branch.address,
-                          style: addressStyle,
-                        ),
-                        const SizedBox(height: 20),
-                        if (distance != null)
-                          IconTextRow(
-                            icon: Icons.pin_drop_outlined,
-                            iconSize: 18,
-                            iconLeft: -1,
-                            gutter: 24,
-                            text: distance,
-                            style: metaStyle,
-                          )
-                        else
-                          const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
+    return CccCard(
+      onTap: onOpen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          NetworkPhotoStrip(
+            photos: [
+              for (final photo in branch.photos)
+                (url: photoUrl(photo.name), credit: photo.author),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Google listing names can run to two lines.
+                Text(branch.name, style: _cardTitle(p, 16.5)),
+                const SizedBox(height: 6),
+                MetaRow(icon: Icons.location_on_outlined, text: branch.address),
+                if (distance != null) ...[
+                  const SizedBox(height: 4),
+                  MetaRow(icon: Icons.near_me_outlined, text: distance),
                 ],
-              ),
+              ],
             ),
-            Positioned(
-              right: 10,
-              bottom: 10,
-              child: DirectionsButton(onTap: onDirections),
-            ),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: DirectionsButton(onTap: onDirections),
+          ),
+        ],
       ),
     );
   }
@@ -618,79 +686,59 @@ class LiveNowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: CccColors.paper,
-      borderRadius: _eventCardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onWatch,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  CccPhoto(
-                    'https://i.ytimg.com/vi/${stream.videoId}/hqdefault.jpg',
-                  ),
-                  const Positioned(
-                    top: 10,
-                    right: 10,
-                    child: LiveBadge(width: 48),
-                  ),
-                ],
-              ),
+    final p = context.palette;
+    return CccCard(
+      onTap: onWatch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CccPhoto(
+                  'https://i.ytimg.com/vi/${stream.videoId}/hqdefault.jpg',
+                ),
+                const Positioned(top: 12, left: 12, child: LiveBadge()),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$branchName is live now',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: CccColors.body,
-                    ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '$branchName is live now',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: p.textMuted,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    stream.title ?? 'Live stream',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      height: 1.25,
-                      color: CccColors.navy,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: CccButton(
-                      label: 'Watch Live',
-                      onPressed: onWatch,
-                      width: 188,
-                      height: 44,
-                      fontSize: 14,
-                      iconGap: 6,
-                      icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                Text(stream.title ?? 'Live stream', style: _cardTitle(p, 17)),
+                const SizedBox(height: 14),
+                CccButton(
+                  label: 'Watch live',
+                  onPressed: onWatch,
+                  height: 44,
+                  fontSize: 15,
+                  iconGap: 6,
+                  icon: const Icon(Icons.play_arrow_rounded),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// A ministry on the Ministries tab, laid out like the design's "Kharis
-/// Ladies" card: photos, name, when and where it meets, members and Join.
+/// A ministry on the Ministries tab: photos, name, when and where it meets,
+/// members and Join.
 class MinistryCard extends StatelessWidget {
   const MinistryCard({
     required this.ministry,
@@ -707,130 +755,82 @@ class MinistryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const nameStyle = TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w700,
-      height: 1.25,
-      color: CccColors.ink,
-    );
-    const focusStyle = TextStyle(
-      fontSize: 14,
-      height: 18 / 14,
-      color: CccColors.body,
-    );
-    const metaStyle = TextStyle(
-      fontSize: 14,
-      height: 18 / 14,
-      color: CccColors.ink,
-    );
-
-    return Material(
-      color: CccColors.paper,
-      borderRadius: _eventCardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 20, bottom: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (ministry.images.isNotEmpty) ...[
-                ImageStrip(images: ministry.images),
-                const SizedBox(height: 20),
+    final p = context.palette;
+    return CccCard(
+      onTap: onOpen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (ministry.images.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            ImageStrip(images: ministry.images),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(ministry.name, style: _cardTitle(p, 17)),
+                if (ministry.focus.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    ministry.focus,
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.4,
+                      color: p.textSecondary,
+                    ),
+                  ),
+                ],
+                if (ministry.meets.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  MetaRow(icon: Icons.schedule, text: ministry.meets),
+                ],
+                if (ministry.venue.isNotEmpty) ...[
+                  SizedBox(height: ministry.meets.isEmpty ? 10 : 4),
+                  MetaRow(
+                    icon: Icons.location_on_outlined,
+                    text: ministry.venue,
+                  ),
+                ],
               ],
-              Padding(
-                padding: const EdgeInsets.only(left: 13, right: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    IconTextRow(
-                      icon: Icons.church,
-                      iconSize: 18,
-                      iconTop: 1,
-                      gutter: 24,
-                      text: ministry.name,
-                      style: nameStyle,
-                    ),
-                    if (ministry.focus.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 24),
-                        child: Text(ministry.focus, style: focusStyle),
-                      ),
-                    ],
-                    if (ministry.meets.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      IconTextRow(
-                        glyph: const CustomPaint(
-                          size: Size(13, 15),
-                          painter: _CalendarGlyph(),
-                        ),
-                        iconLeft: 2,
-                        iconTop: 1,
-                        gutter: 24,
-                        text: ministry.meets,
-                        style: metaStyle,
-                      ),
-                    ],
-                    if (ministry.venue.isNotEmpty) ...[
-                      SizedBox(height: ministry.meets.isEmpty ? 16 : 12),
-                      IconTextRow(
-                        icon: Icons.location_on,
-                        iconSize: 18,
-                        iconLeft: -1,
-                        gutter: 24,
-                        text: ministry.venue,
-                        style: metaStyle,
-                      ),
-                    ],
-                    // The row is as tall as the Join tag's tap area, which
-                    // already spaces it from the venue.
-                    Row(
-                      children: [
-                        if (ministry.members.isNotEmpty) ...[
-                          SizedBox(
-                            width: 24,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Transform.translate(
-                                offset: const Offset(-1, 0),
-                                child: const Icon(
-                                  Icons.groups_outlined,
-                                  size: 19,
-                                  color: CccColors.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '${ministry.members} members',
-                              style: metaStyle,
-                            ),
-                          ),
-                        ] else
-                          const Spacer(),
-                        JoinChip(
-                          joined: joined,
-                          ministryName: ministry.name,
-                          onTap: onJoin,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 12, 8),
+            child: Row(
+              children: [
+                if (ministry.members.isNotEmpty) ...[
+                  Icon(Icons.groups_outlined, size: 17, color: p.textMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${ministry.members} members',
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: p.textMuted,
+                      ),
+                    ),
+                  ),
+                ] else
+                  const Spacer(),
+                JoinChip(
+                  joined: joined,
+                  ministryName: ministry.name,
+                  onTap: onJoin,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// The design's small yellow "Join" tag. Once joined it turns into a pale
-/// "Joined" tag with a check; tapping it again leaves the ministry.
+/// A small gold "Join" button. Once joined it turns into a quiet "Joined"
+/// with a check; tapping it again leaves the ministry.
 class JoinChip extends StatefulWidget {
   const JoinChip({
     required this.joined,
@@ -856,7 +856,14 @@ class _JoinChipState extends State<JoinChip> {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final joined = widget.joined;
+    final style = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      height: 1,
+      color: joined ? p.text : CccColors.onPrimary,
+    );
     // Its own node, so screen readers can reach it apart from the card.
     return Semantics(
       container: true,
@@ -872,9 +879,9 @@ class _JoinChipState extends State<JoinChip> {
         onTapUp: (_) => _press(false),
         onTapCancel: () => _press(false),
         onTap: widget.onTap,
-        // 44px tall so the 28px tag is still easy to hit.
+        // 48px tall so the 34px button is still easy to hit.
         child: SizedBox(
-          height: 44,
+          height: 48,
           child: Center(
             child: AnimatedScale(
               scale: pressed ? 0.95 : 1,
@@ -883,12 +890,15 @@ class _JoinChipState extends State<JoinChip> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
-                width: 88,
-                height: 28,
+                constraints: const BoxConstraints(minWidth: 84),
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: joined ? CccColors.primaryTint : CccColors.primary,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: CccColors.primary, width: 1.2),
+                  color: joined ? p.surface : CccColors.primary,
+                  borderRadius: BorderRadius.circular(17),
+                  border: Border.all(
+                    color: joined ? p.lineStrong : CccColors.primary,
+                  ),
                 ),
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 180),
@@ -901,26 +911,26 @@ class _JoinChipState extends State<JoinChip> {
                       child: child,
                     ),
                   ),
-                  child: Padding(
+                  child: Center(
                     key: ValueKey(joined),
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    widthFactor: 1,
                     // Shrinks rather than overflowing with large text sizes.
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: joined
-                          ? const Row(
+                          ? Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.check_rounded,
                                   size: 16,
-                                  color: CccColors.primary,
+                                  color: p.accentText,
                                 ),
-                                SizedBox(width: 4),
-                                Text('Joined', style: _chipStyle),
+                                const SizedBox(width: 4),
+                                Text('Joined', style: style),
                               ],
                             )
-                          : const Text('Join', style: _chipStyle),
+                          : Text('Join', style: style),
                     ),
                   ),
                 ),
@@ -929,99 +939,6 @@ class _JoinChipState extends State<JoinChip> {
           ),
         ),
       ),
-    );
-  }
-
-  static const _chipStyle = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w700,
-    height: 1,
-    color: CccColors.ink,
-  );
-}
-
-/// Name, focus, meeting time, venue, members and description on the ministry
-/// details screen, in the style of [EventInfo].
-class MinistryInfo extends StatelessWidget {
-  const MinistryInfo({required this.ministry, super.key});
-
-  final Ministry ministry;
-
-  static const _rowStyle = TextStyle(
-    fontSize: 16,
-    height: 21 / 16,
-    color: CccColors.body,
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          ministry.name,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            height: 1.2,
-            color: CccColors.navy,
-          ),
-        ),
-        if (ministry.focus.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            ministry.focus,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              height: 1.25,
-              color: CccColors.body,
-            ),
-          ),
-        ],
-        for (final row in [
-          if (ministry.meets.isNotEmpty)
-            IconTextRow(
-              glyph: const CustomPaint(
-                size: Size(14, 16),
-                painter: _CalendarGlyph(),
-              ),
-              iconLeft: 3,
-              iconTop: 2,
-              text: ministry.meets,
-              style: _rowStyle,
-            ),
-          if (ministry.venue.isNotEmpty)
-            IconTextRow(
-              icon: Icons.location_on,
-              iconSize: 19,
-              iconLeft: -1,
-              iconTop: 1,
-              text: ministry.venue,
-              style: _rowStyle,
-            ),
-          if (ministry.members.isNotEmpty)
-            IconTextRow(
-              icon: Icons.groups_outlined,
-              iconSize: 22,
-              iconLeft: -1,
-              iconTop: -1,
-              text: '${ministry.members} members',
-              style: _rowStyle,
-            ),
-          if (ministry.about.isNotEmpty)
-            IconTextRow(
-              glyph: const CustomPaint(
-                size: Size(15, 15),
-                painter: _ChatGlyph(),
-              ),
-              iconLeft: 3,
-              iconTop: 3,
-              text: ministry.about,
-              style: _rowStyle,
-            ),
-        ]) ...[const SizedBox(height: 15), row],
-      ],
     );
   }
 }
@@ -1051,126 +968,94 @@ class SermonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const metaStyle = TextStyle(fontSize: 13, height: 1, color: CccColors.body);
+    final p = context.palette;
+    final metaStyle = TextStyle(fontSize: 13, height: 1, color: p.textMuted);
     final durationLabel = sermon.durationLabel;
     final position = this.position;
 
-    return Material(
-      color: CccColors.paper,
-      borderRadius: _eventCardRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 14, 14, 14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  PlayBadge(playback: playback, size: 48),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+    Widget meta(IconData icon, String text) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: p.textMuted),
+        const SizedBox(width: 5),
+        Text(text, style: metaStyle),
+      ],
+    );
+
+    return CccCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                PlayBadge(playback: playback, size: 48),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        sermon.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: _cardTitle(p, 16),
+                      ),
+                      if (sermon.preacher.isNotEmpty) ...[
+                        const SizedBox(height: 2),
                         Text(
-                          sermon.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
-                            color: CccColors.ink,
+                          sermon.preacher,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.35,
+                            color: p.textSecondary,
                           ),
-                        ),
-                        if (sermon.preacher.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            sermon.preacher,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              height: 18 / 14,
-                              color: CccColors.body,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 9),
-                        Wrap(
-                          spacing: 16,
-                          runSpacing: 6,
-                          children: [
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const CustomPaint(
-                                  size: Size(11, 13),
-                                  painter: _CalendarGlyph(),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(sermon.dateLabel, style: metaStyle),
-                              ],
-                            ),
-                            if (durationLabel != null)
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.schedule,
-                                    size: 14,
-                                    color: CccColors.primary,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(durationLabel, style: metaStyle),
-                                ],
-                              ),
-                            if (sermon.forAllBranches)
-                              const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.public,
-                                    size: 14,
-                                    color: CccColors.primary,
-                                  ),
-                                  SizedBox(width: 5),
-                                  Text('All branches', style: metaStyle),
-                                ],
-                              ),
-                          ],
                         ),
                       ],
-                    ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 6,
+                        children: [
+                          meta(Icons.event_outlined, sermon.dateLabel),
+                          if (durationLabel != null)
+                            meta(Icons.schedule, durationLabel),
+                          if (sermon.forAllBranches)
+                            meta(Icons.public, 'All branches'),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          if (position != null)
+            ValueListenableBuilder(
+              valueListenable: position,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: length > Duration.zero
+                    ? (value.inMilliseconds / length.inMilliseconds).clamp(
+                        0.0,
+                        1.0,
+                      )
+                    : 0,
+                minHeight: 3,
+                color: CccColors.primary,
+                backgroundColor: p.accentTint,
               ),
             ),
-            if (position != null)
-              ValueListenableBuilder(
-                valueListenable: position,
-                builder: (context, value, _) => LinearProgressIndicator(
-                  value: length > Duration.zero
-                      ? (value.inMilliseconds / length.inMilliseconds).clamp(
-                          0.0,
-                          1.0,
-                        )
-                      : 0,
-                  minHeight: 3,
-                  color: CccColors.primary,
-                  backgroundColor: CccColors.primaryTint,
-                ),
-              ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-/// Yellow play / pause button face. Black icons keep it readable; white on
-/// the brand yellow is too faint for an icon this important.
+/// Gold play / pause button face. Black icons keep it readable; white on
+/// the gold is too faint for an icon this important.
 class PlayBadge extends StatelessWidget {
   const PlayBadge({
     required this.playback,
@@ -1185,7 +1070,7 @@ class PlayBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = size * 0.62;
+    final iconSize = size * 0.6;
     return Container(
       width: size,
       height: size,
@@ -1211,21 +1096,21 @@ class PlayBadge extends StatelessWidget {
             dimension: size * 0.4,
             child: const CircularProgressIndicator(
               strokeWidth: 2.4,
-              color: CccColors.ink,
+              color: CccColors.onPrimary,
             ),
           ),
           SermonPlayback.playing => Icon(
             Icons.pause_rounded,
             key: const ValueKey('pause'),
             size: iconSize,
-            color: CccColors.ink,
+            color: CccColors.onPrimary,
             semanticLabel: 'Pause',
           ),
           _ => Icon(
             Icons.play_arrow_rounded,
             key: const ValueKey('play'),
             size: iconSize,
-            color: CccColors.ink,
+            color: CccColors.onPrimary,
             semanticLabel: 'Play',
           ),
         },
@@ -1234,7 +1119,7 @@ class PlayBadge extends StatelessWidget {
   }
 }
 
-/// Yellow diamond that opens turn-by-turn directions.
+/// Opens turn-by-turn directions to a branch.
 class DirectionsButton extends StatelessWidget {
   const DirectionsButton({required this.onTap, super.key});
 
@@ -1242,107 +1127,14 @@ class DirectionsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
+    return CccButton(
       label: 'Directions',
-      child: GestureDetector(
-        onTap: onTap,
-        child: SizedBox.square(
-          dimension: 56.57,
-          child: Center(
-            child: Transform.rotate(
-              angle: math.pi / 4,
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: CccColors.primary,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Transform.rotate(
-                  angle: -math.pi / 4,
-                  child: const Icon(
-                    Icons.turn_right,
-                    size: 20,
-                    color: CccColors.paper,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+      variant: CccButtonVariant.outlined,
+      height: 44,
+      fontSize: 15,
+      iconGap: 6,
+      icon: const Icon(Icons.directions_outlined),
+      onPressed: onTap,
     );
   }
-}
-
-/// Solid calendar with binder tabs (event date row).
-class _CalendarGlyph extends CustomPainter {
-  const _CalendarGlyph();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fill = Paint()..color = CccColors.primary;
-    canvas.drawRRect(
-      RRect.fromLTRBR(
-        0,
-        2,
-        size.width,
-        size.height,
-        const Radius.circular(1.5),
-      ),
-      fill,
-    );
-    final tab = size.width * 0.13;
-    for (final x in [size.width * 0.22, size.width * 0.78 - tab]) {
-      canvas.drawRRect(
-        RRect.fromLTRBR(x, 0, x + tab, 4, const Radius.circular(1)),
-        fill,
-      );
-    }
-    canvas.drawRect(
-      Rect.fromLTWH(0, 5.5, size.width, 1),
-      Paint()..color = CccColors.paper,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Round speech bubble with two lines (event description row).
-class _ChatGlyph extends CustomPainter {
-  const _ChatGlyph();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fill = Paint()..color = CccColors.primary;
-    final radius = size.width / 2;
-    canvas.drawCircle(Offset(radius, radius), radius, fill);
-    canvas.drawPath(
-      Path()
-        ..moveTo(0, size.height)
-        ..lineTo(size.width * 0.12, size.height * 0.55)
-        ..lineTo(size.width * 0.45, size.height * 0.88)
-        ..close(),
-      fill,
-    );
-    final line = Paint()
-      ..color = CccColors.paper
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(size.width * 0.3, size.height * 0.4),
-      Offset(size.width * 0.7, size.height * 0.4),
-      line,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.3, size.height * 0.62),
-      Offset(size.width * 0.58, size.height * 0.62),
-      line,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

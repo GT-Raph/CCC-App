@@ -9,7 +9,9 @@ The app ships **no sample news, events, sermons, ministries, member counts
 or preselected memberships**. Content is read from Supabase; an empty table
 shows an empty state, and an unavailable backend shows an error with retry.
 Test fixtures live only in `test/support/` and are not app assets.
-The bundled header, welcome photo and logo are design assets, not news.
+The bundled welcome photo and logo are design assets, not news. The app
+follows the phone's light or dark appearance; the splash and welcome screens
+are always dark.
 
 - **Home:** published news for the chosen branch and church-wide news.
 - **Events:** the chosen branch's events plus `for_all_branches` events.

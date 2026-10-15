@@ -6,9 +6,8 @@ import '../services/auth_service.dart';
 import '../theme/ccc_theme.dart';
 import '../widgets/ccc_widgets.dart';
 
-/// Splash Screens 1–3: a blank screen, then the logo, then the church's
-/// name,
-/// before moving on to the welcome screen (or straight home if signed in).
+/// The church's mark and name on the welcome screen's night, before moving
+/// on to the welcome screen (or straight home if signed in).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({this.member, super.key});
 
@@ -63,9 +62,9 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: darkStatusBar,
+      value: cccSystemBars(Brightness.dark),
       child: Scaffold(
-        backgroundColor: CccColors.paper,
+        backgroundColor: CccNight.background,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -73,55 +72,41 @@ class _SplashScreenState extends State<SplashScreen>
               FadeTransition(
                 opacity: logoIn,
                 child: ScaleTransition(
-                  scale: Tween(begin: 0.9, end: 1.0).animate(logoIn),
-                  child: const ChurchLogo(),
+                  scale: Tween(begin: 0.94, end: 1.0).animate(logoIn),
+                  child: const ChurchLogo(width: 128),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
               FadeTransition(
                 opacity: wordmarkIn,
                 child: SlideTransition(
                   position: Tween(
-                    begin: const Offset(0, 0.25),
+                    begin: const Offset(0, 0.2),
                     end: Offset.zero,
                   ).animate(wordmarkIn),
-                  // The church's name set like the design's CHURCH wordmark.
                   child: Semantics(
                     label: 'Calvary Charismatic Centre. Welcome home.',
                     excludeSemantics: true,
                     child: const Column(
                       children: [
                         Text(
-                          'CALVARY CHARISMATIC',
+                          'Calvary Charismatic Centre',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontFamily: CccFonts.montserrat,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 17,
-                            height: 1,
-                            letterSpacing: 3.4,
-                            color: CccColors.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 24,
+                            height: 1.2,
+                            letterSpacing: -0.4,
+                            color: CccNight.text,
                           ),
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'CENTRE',
-                          style: TextStyle(
-                            fontFamily: CccFonts.montserrat,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 40,
-                            height: 1,
-                            letterSpacing: 8,
-                            color: CccColors.primary,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
                           'Welcome home',
                           style: TextStyle(
-                            fontFamily: CccFonts.script,
-                            fontSize: 20,
-                            height: 1,
-                            color: CccColors.primary,
+                            fontSize: 15,
+                            height: 1.3,
+                            color: CccNight.muted,
                           ),
                         ),
                       ],

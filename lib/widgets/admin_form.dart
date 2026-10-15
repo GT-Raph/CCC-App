@@ -7,9 +7,9 @@ import '../models/event.dart' show eventDateLabel;
 import '../theme/ccc_theme.dart';
 import 'ccc_widgets.dart';
 
-/// A staff form screen: the photo header, the fields, and Save (plus Delete
-/// for existing items) at the bottom. Leaving with unsaved changes asks
-/// first.
+/// A staff form screen: the back button and title, the fields, and Save
+/// (plus Delete for existing items) at the bottom. Leaving with unsaved
+/// changes asks first.
 class AdminFormScaffold extends StatelessWidget {
   const AdminFormScaffold({
     required this.title,
@@ -40,6 +40,7 @@ class AdminFormScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return PopScope(
       canPop: !dirty || busy,
@@ -54,65 +55,59 @@ class AdminFormScaffold extends StatelessWidget {
         );
         if (leave && context.mounted) Navigator.of(context).pop();
       },
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: darkStatusBar,
-        child: Scaffold(
-          backgroundColor: CccColors.background,
-          body: Column(
-            children: [
-              DetailsHeader(title: title),
-              Expanded(
-                child: AbsorbPointer(
-                  absorbing: busy,
-                  child: ListView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + bottom),
-                    children: [
-                      ...children,
-                      const SizedBox(height: 28),
-                      CccButton(
-                        label: saveLabel,
-                        isLoading: busy,
-                        onPressed: onSave,
+      child: Scaffold(
+        body: Column(
+          children: [
+            DetailsHeader(title: title),
+            Expanded(
+              child: AbsorbPointer(
+                absorbing: busy,
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + bottom),
+                  children: [
+                    ...children,
+                    const SizedBox(height: 20),
+                    CccButton(
+                      label: saveLabel,
+                      isLoading: busy,
+                      onPressed: onSave,
+                    ),
+                    if (busy && busyLabel != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        busyLabel!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: p.textMuted),
                       ),
-                      if (busy && busyLabel != null) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          busyLabel!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: CccColors.body,
-                          ),
-                        ),
-                      ],
-                      if (onDelete != null) ...[
-                        const SizedBox(height: 16),
-                        Center(
-                          child: TextButton.icon(
-                            onPressed: busy ? null : onDelete,
-                            style: TextButton.styleFrom(
-                              foregroundColor: CccColors.error,
-                              minimumSize: const Size(48, 48),
-                            ),
-                            icon: const Icon(Icons.delete_outline),
-                            label: Text(
-                              deleteLabel,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
-                  ),
+                    if (onDelete != null) ...[
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: busy ? null : onDelete,
+                          style: TextButton.styleFrom(
+                            foregroundColor: p.error,
+                            minimumSize: const Size(48, 48),
+                          ),
+                          icon: const Icon(Icons.delete_outline),
+                          label: Text(
+                            deleteLabel,
+                            style: const TextStyle(
+                              fontFamily: CccFonts.openSans,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -127,37 +122,33 @@ Future<bool> confirmAction(
   required String confirmLabel,
   bool destructive = false,
 }) async {
+  final p = context.palette;
+  const buttonText = TextStyle(
+    fontFamily: CccFonts.openSans,
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+  );
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      backgroundColor: CccColors.paper,
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: CccColors.ink,
-        ),
-      ),
-      content: Text(
-        message,
-        style: const TextStyle(fontSize: 15, color: CccColors.body),
-      ),
+      title: Text(title),
+      content: Text(message),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          style: TextButton.styleFrom(foregroundColor: CccColors.ink),
+          style: TextButton.styleFrom(
+            foregroundColor: p.textSecondary,
+            textStyle: buttonText,
+          ),
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
           style: TextButton.styleFrom(
-            foregroundColor: destructive ? CccColors.error : CccColors.navy,
+            foregroundColor: destructive ? p.error : p.accentText,
+            textStyle: buttonText,
           ),
-          child: Text(
-            confirmLabel,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+          child: Text(confirmLabel),
         ),
       ],
     ),
@@ -180,15 +171,8 @@ class FormSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 12),
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: CccColors.navy,
-              ),
-            ),
+            padding: const EdgeInsets.only(top: 12, bottom: 12),
+            child: SectionTitle(title),
           ),
           for (final child in children) ...[child, const SizedBox(height: 16)],
         ],
@@ -239,68 +223,17 @@ class LabeledField extends StatelessWidget {
           keyboardType: lines > 1 ? TextInputType.multiline : keyboardType,
           textCapitalization: capitalization,
           onChanged: onChanged,
-          style: const TextStyle(fontSize: 16, color: CccColors.ink),
-          decoration: fieldDecoration(hint: hint, helper: helper, error: error),
+          style: TextStyle(fontSize: 16, color: context.palette.text),
+          decoration: cccFieldDecoration(
+            context,
+            hint: hint,
+            helper: helper,
+            error: error,
+          ),
         ),
       ],
     );
   }
-}
-
-class FieldLabel extends StatelessWidget {
-  const FieldLabel(this.label, {this.required = false, super.key});
-
-  final String label;
-  final bool required;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text.rich(
-      TextSpan(
-        text: label,
-        children: [
-          if (required)
-            const TextSpan(
-              text: ' (required)',
-              style: TextStyle(
-                fontWeight: FontWeight.w400,
-                color: CccColors.muted,
-              ),
-            ),
-        ],
-      ),
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: CccColors.ink,
-      ),
-    );
-  }
-}
-
-InputDecoration fieldDecoration({String? hint, String? helper, String? error}) {
-  OutlineInputBorder border(Color color, [double width = 1]) =>
-      OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: color, width: width),
-      );
-  return InputDecoration(
-    hintText: hint,
-    hintStyle: const TextStyle(color: CccColors.muted),
-    helperText: helper,
-    helperMaxLines: 3,
-    helperStyle: const TextStyle(fontSize: 13, color: CccColors.muted),
-    errorText: error,
-    errorStyle: const TextStyle(fontSize: 13, color: CccColors.error),
-    filled: true,
-    fillColor: CccColors.paper,
-    isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    enabledBorder: border(CccColors.border),
-    focusedBorder: border(CccColors.primary, 1.5),
-    errorBorder: border(CccColors.error),
-    focusedErrorBorder: border(CccColors.error, 1.5),
-  );
 }
 
 /// The box tapped to open a picker (branch, date, file), styled like a
@@ -327,39 +260,40 @@ class PickerBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = error != null ? CccColors.error : CccColors.border;
+    final p = context.palette;
+    final borderColor = error != null ? p.error : p.lineStrong;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Material(
-          color: onTap == null ? CccColors.background : CccColors.paper,
+          color: onTap == null ? p.surfaceAlt : p.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: borderColor),
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: onTap == null ? p.line : borderColor),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 50),
+              constraints: const BoxConstraints(minHeight: 52),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
                 child: Row(
                   children: [
-                    Icon(icon, size: 20, color: CccColors.primary),
+                    Icon(icon, size: 20, color: p.textMuted),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         text,
                         style: TextStyle(
                           fontSize: 16,
-                          color: placeholder ? CccColors.muted : CccColors.ink,
+                          color: placeholder ? p.textMuted : p.text,
                         ),
                       ),
                     ),
                     ?trailing,
                     if (onTap != null && trailing == null)
-                      const Icon(Icons.expand_more, color: CccColors.ink),
+                      Icon(Icons.expand_more, color: p.textMuted),
                   ],
                 ),
               ),
@@ -369,10 +303,7 @@ class PickerBox extends StatelessWidget {
         if (error != null)
           Padding(
             padding: const EdgeInsets.only(left: 12, top: 6),
-            child: Text(
-              error!,
-              style: const TextStyle(fontSize: 13, color: CccColors.error),
-            ),
+            child: Text(error!, style: TextStyle(fontSize: 13, color: p.error)),
           ),
       ],
     );
@@ -380,7 +311,7 @@ class PickerBox extends StatelessWidget {
 }
 
 /// Picks the branch an item belongs to. Branch staff only ever see their
-/// own branch; church-wide admins choose any, and "All branches" where
+/// own branch; HQ admins choose any, and "All branches" where
 /// [allBranchesLabel] is given.
 class BranchChooser extends StatelessWidget {
   const BranchChooser({
@@ -402,7 +333,7 @@ class BranchChooser extends StatelessWidget {
   /// The staff member's own branch when they're branch staff.
   final String? lockedTo;
 
-  /// Offered (as an empty branch) to church-wide admins, e.g. "All branches".
+  /// Offered (as an empty branch) to HQ admins, e.g. "All branches".
   final String? allBranchesLabel;
   final String? error;
 
@@ -422,65 +353,65 @@ class BranchChooser extends StatelessWidget {
     final chosen = await showModalBottomSheet<(String?,)>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: CccColors.paper,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.75,
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 12),
-              const SheetHandle(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: CccColors.ink,
+      builder: (sheetContext) {
+        final p = sheetContext.palette;
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.75,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 12),
+                const SheetHandle(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.3,
+                      color: p.text,
+                    ),
                   ),
                 ),
-              ),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final (id, name) in options)
-                      ListTile(
-                        minTileHeight: 52,
-                        title: Text(
-                          name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: id == value
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                            color: CccColors.ink,
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final (id, name) in options)
+                        ListTile(
+                          minTileHeight: 52,
+                          title: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: id == value
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                              color: p.text,
+                            ),
                           ),
+                          trailing: id == value
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: CccColors.primary,
+                                )
+                              : null,
+                          onTap: () => Navigator.pop(sheetContext, (id,)),
                         ),
-                        trailing: id == value
-                            ? const Icon(
-                                Icons.check_circle,
-                                color: CccColors.primary,
-                              )
-                            : null,
-                        onTap: () => Navigator.pop(sheetContext, (id,)),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
     if (chosen != null) onChanged(chosen.$1);
   }
@@ -494,18 +425,18 @@ class BranchChooser extends StatelessWidget {
         FieldLabel(label, required: allBranchesLabel == null),
         const SizedBox(height: 6),
         PickerBox(
-          icon: Icons.church,
+          icon: Icons.church_outlined,
           text: _name(locked ? lockedTo : value),
           placeholder: !locked && value == null && allBranchesLabel == null,
           error: error,
           onTap: locked ? null : () => _choose(context),
         ),
         if (locked)
-          const Padding(
-            padding: EdgeInsets.only(left: 12, top: 6),
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 6),
             child: Text(
               'Branch staff post for their own branch.',
-              style: TextStyle(fontSize: 13, color: CccColors.muted),
+              style: TextStyle(fontSize: 13, color: context.palette.textMuted),
             ),
           ),
       ],
@@ -579,6 +510,7 @@ class DateTimeChooser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final value = this.value;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -595,7 +527,7 @@ class DateTimeChooser extends StatelessWidget {
               ? IconButton(
                   tooltip: 'Clear $label',
                   onPressed: () => onChanged(null),
-                  icon: const Icon(Icons.close, color: CccColors.ink),
+                  icon: Icon(Icons.close, color: p.textMuted),
                 )
               : null,
         ),
@@ -604,7 +536,7 @@ class DateTimeChooser extends StatelessWidget {
             padding: const EdgeInsets.only(left: 12, top: 6),
             child: Text(
               helper!,
-              style: const TextStyle(fontSize: 13, color: CccColors.muted),
+              style: TextStyle(fontSize: 13, color: p.textMuted),
             ),
           ),
       ],
@@ -657,6 +589,7 @@ class PhotoChooser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -672,31 +605,31 @@ class PhotoChooser extends StatelessWidget {
               ),
             if (photos.length < max)
               Material(
-                color: CccColors.paper,
+                color: p.surface,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: CccColors.primary),
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: p.lineStrong),
                 ),
                 child: InkWell(
                   onTap: () => _add(context),
-                  borderRadius: BorderRadius.circular(8),
-                  child: const SizedBox.square(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox.square(
                     dimension: 96,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.add_photo_alternate_outlined,
-                          color: CccColors.ink,
-                          size: 28,
+                          color: p.accentText,
+                          size: 26,
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           'Add photos',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: CccColors.ink,
+                            color: p.text,
                           ),
                         ),
                       ],
@@ -706,10 +639,10 @@ class PhotoChooser extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           'The first photo leads the card. Up to $max.',
-          style: const TextStyle(fontSize: 13, color: CccColors.muted),
+          style: TextStyle(fontSize: 13, color: p.textMuted),
         ),
       ],
     );
@@ -729,14 +662,15 @@ class _Thumbnail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     final image = photo.isNew
         ? Image.memory(photo.bytes!, fit: BoxFit.cover)
         : Image.network(
             photo.url!,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const ColoredBox(
-              color: CccColors.background,
-              child: Icon(Icons.broken_image_outlined, color: CccColors.muted),
+            errorBuilder: (_, _, _) => ColoredBox(
+              color: p.surfaceAlt,
+              child: Icon(Icons.broken_image_outlined, color: p.textMuted),
             ),
           );
     return SizedBox.square(
@@ -744,7 +678,7 @@ class _Thumbnail extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ClipRRect(borderRadius: BorderRadius.circular(8), child: image),
+          ClipRRect(borderRadius: BorderRadius.circular(12), child: image),
           if (first)
             Positioned(
               left: 6,
@@ -753,14 +687,14 @@ class _Thumbnail extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: CccColors.primary,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: const Text(
                   'Cover',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: CccColors.ink,
+                    color: CccColors.onPrimary,
                   ),
                 ),
               ),
@@ -772,11 +706,12 @@ class _Thumbnail extends StatelessWidget {
               tooltip: 'Remove photo',
               onPressed: onRemove,
               style: IconButton.styleFrom(
-                backgroundColor: CccColors.paper,
+                backgroundColor: p.surface,
+                side: BorderSide(color: p.line),
                 minimumSize: const Size(32, 32),
                 padding: EdgeInsets.zero,
               ),
-              icon: const Icon(Icons.close, size: 18, color: CccColors.ink),
+              icon: Icon(Icons.close, size: 18, color: p.text),
             ),
           ),
         ],
@@ -802,30 +737,32 @@ class SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Material(
-      color: CccColors.paper,
+      color: p.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: const BorderSide(color: CccColors.border),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: p.line),
       ),
       clipBehavior: Clip.antiAlias,
       child: SwitchListTile(
         value: value,
         onChanged: onChanged,
         activeTrackColor: CccColors.primary,
+        activeThumbColor: CccColors.onPrimary,
         title: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: CccColors.ink,
+            color: p.text,
           ),
         ),
         subtitle: subtitle == null
             ? null
             : Text(
                 subtitle!,
-                style: const TextStyle(fontSize: 13, color: CccColors.body),
+                style: TextStyle(fontSize: 13, color: p.textSecondary),
               ),
       ),
     );

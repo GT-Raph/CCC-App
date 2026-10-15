@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
@@ -60,7 +61,15 @@ class _CccAppState extends State<CccApp> {
       child: MaterialApp(
         title: 'CCC',
         debugShowCheckedModeBanner: false,
+        // Light or dark with the phone.
         theme: buildCccTheme(),
+        darkTheme: buildCccTheme(Brightness.dark),
+        // Status bar icons that read on the current appearance. Screens with
+        // their own colours (the welcome screen) set their own.
+        builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
+          value: cccSystemBars(Theme.of(context).brightness),
+          child: child!,
+        ),
         home: SplashScreen(member: widget.initialMember),
       ),
     );
