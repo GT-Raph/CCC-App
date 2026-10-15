@@ -105,7 +105,39 @@ class CccPalette extends ThemeExtension<CccPalette> {
   );
 
   @override
-  CccPalette copyWith() => this;
+  CccPalette copyWith({
+    Brightness? brightness,
+    Color? background,
+    Color? surface,
+    Color? surfaceAlt,
+    Color? line,
+    Color? lineStrong,
+    Color? text,
+    Color? textSecondary,
+    Color? textMuted,
+    Color? accentText,
+    Color? accentTint,
+    Color? error,
+    Color? inverseSurface,
+    Color? onInverseSurface,
+  }) {
+    return CccPalette(
+      brightness: brightness ?? this.brightness,
+      background: background ?? this.background,
+      surface: surface ?? this.surface,
+      surfaceAlt: surfaceAlt ?? this.surfaceAlt,
+      line: line ?? this.line,
+      lineStrong: lineStrong ?? this.lineStrong,
+      text: text ?? this.text,
+      textSecondary: textSecondary ?? this.textSecondary,
+      textMuted: textMuted ?? this.textMuted,
+      accentText: accentText ?? this.accentText,
+      accentTint: accentTint ?? this.accentTint,
+      error: error ?? this.error,
+      inverseSurface: inverseSurface ?? this.inverseSurface,
+      onInverseSurface: onInverseSurface ?? this.onInverseSurface,
+    );
+  }
 
   @override
   CccPalette lerp(CccPalette? other, double t) {
