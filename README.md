@@ -214,7 +214,10 @@ The last test checks the staff permissions in `staff.sql` against a local
 PostgreSQL; see [supabase/tests](supabase/tests/README.md).
 
 The app icons are generated from the church logo in `assets/launcher/`
-(white background, adaptive on Android 8+). After changing them, run
+(on the welcome screen's warm night, adaptive on Android 8+). The logo's
+lettering is white, so it needs a dark background there; inside the app,
+light screens use `assets/images/church_logo_light.png`, whose lettering is
+dark. After changing the icons, run
 `dart run flutter_launcher_icons`.
 
 A hot restart cannot register new native plugins. Stop the app and rebuild it

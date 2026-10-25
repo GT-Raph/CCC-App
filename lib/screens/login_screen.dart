@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 20),
             const Align(
               alignment: Alignment.centerLeft,
-              child: ChurchLogo(width: 52),
+              child: ChurchLogo(height: 76),
             ),
             const SizedBox(height: 24),
             const AuthTitle(

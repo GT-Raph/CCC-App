@@ -73,7 +73,7 @@ class _SplashScreenState extends State<SplashScreen>
                 opacity: logoIn,
                 child: ScaleTransition(
                   scale: Tween(begin: 0.94, end: 1.0).animate(logoIn),
-                  child: const ChurchLogo(width: 128),
+                  child: const ChurchLogo(height: 200, onDark: true),
                 ),
               ),
               const SizedBox(height: 28),

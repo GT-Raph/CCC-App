@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart' show kTouchSlop;
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../navigation.dart';
 import '../theme/ccc_theme.dart';
@@ -249,23 +248,33 @@ class FullScreenColumn extends StatelessWidget {
   }
 }
 
+/// The church's logo: the cross and flame over the globe, with the church's
+/// name around it.
 class ChurchLogo extends StatelessWidget {
-  const ChurchLogo({
-    this.width = 173,
-    this.color = CccColors.primary,
-    super.key,
-  });
+  const ChurchLogo({this.height = 240, this.onDark, this.color, super.key});
 
-  final double width;
-  final Color color;
+  final double height;
+
+  /// Whether the logo sits on a dark background, which takes the white
+  /// lettering; by default, whether the theme is dark.
+  final bool? onDark;
+
+  /// Draws the logo as a flat silhouette in this colour.
+  final Color? color;
+
+  /// Width over height of the artwork.
+  static const aspectRatio = 2321 / 5183;
 
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      CccAssets.logo,
-      width: width,
-      height: width * 149.997 / 173,
-      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    final dark = onDark ?? context.palette.isDark;
+    return Image.asset(
+      dark ? CccAssets.logo : CccAssets.logoOnLight,
+      width: height * aspectRatio,
+      height: height,
+      color: color,
+      colorBlendMode: color == null ? null : BlendMode.srcIn,
+      filterQuality: FilterQuality.medium,
     );
   }
 }

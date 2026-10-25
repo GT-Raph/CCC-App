@@ -183,10 +183,6 @@ class CccNight {
   /// Secondary text; 8.5:1 on [background].
   static const muted = Color(0xFFB5AEA1);
 
-  /// The logo's construction lines continued across the screen.
-  static const line = Color(0x52E7B41F);
-  static const glow = Color(0x24E7B41F);
-
   /// Outlined buttons: a faint fill, and an edge at 3.4:1 on [background].
   static const buttonFill = Color(0x0FFFFFFF);
   static const buttonEdge = Color(0x5CFFFFFF);
@@ -197,7 +193,11 @@ class CccFonts {
 }
 
 class CccAssets {
-  static const logo = 'assets/svg/church_logo.svg';
+  /// The church's logo with white lettering, for dark backgrounds.
+  static const logo = 'assets/images/church_logo.png';
+
+  /// The same logo with dark lettering, for light backgrounds.
+  static const logoOnLight = 'assets/images/church_logo_light.png';
   static const socialButtons = 'assets/svg/social_buttons.svg';
   static const welcomeBackground = 'assets/images/welcome_background.jpg';
 }

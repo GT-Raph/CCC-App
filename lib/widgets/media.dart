@@ -140,7 +140,7 @@ class CccPhoto extends StatelessWidget {
   }
 }
 
-/// Stands in for a photo that couldn't load: the church's mark, faint.
+/// Stands in for a photo that couldn't load: the church's logo, faint.
 class _NoPhoto extends StatelessWidget {
   const _NoPhoto();
 
@@ -151,7 +151,7 @@ class _NoPhoto extends StatelessWidget {
       color: p.surfaceAlt,
       child: Center(
         child: ChurchLogo(
-          width: 56,
+          height: 56,
           color: p.textMuted.withValues(alpha: 0.45),
         ),
       ),

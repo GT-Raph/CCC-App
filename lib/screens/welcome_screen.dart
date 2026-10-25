@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,8 +21,8 @@ const _nightStatusBar = SystemUiOverlayStyle(
 /// A strong ease-out: quick to respond, soft to land.
 const _easeOut = Cubic(0.23, 1, 0.32, 1);
 
-/// The first screen: the church's mark with its own construction lines drawn
-/// out across the page, then Create account, Log in and Continue as guest.
+/// The first screen: the church's logo, then Create account, Log in and
+/// Continue as guest.
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -35,13 +34,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
   StreamSubscription<Member>? signIns;
 
-  /// One opening sequence: the lines draw out, the mark settles, then the
-  /// words and buttons rise 56ms apart. Buttons work throughout.
+  /// One opening sequence: the logo settles, then the words and buttons rise
+  /// 56ms apart. Buttons work throughout.
   late final intro = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   );
-  late final lines = _phase(0, 0.75);
   late final mark = _phase(0.08, 0.55);
   late final rise = [
     for (var i = 0; i < 5; i++) _phase(0.26 + i * 0.04, 0.66 + i * 0.04),
@@ -120,7 +118,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: _LogoStage(lines: lines, mark: mark),
+                          child: _LogoStage(mark: mark),
                         ),
                         Padding(
                           padding: EdgeInsets.fromLTRB(24, 0, 24, bottom + 20),
@@ -249,146 +247,36 @@ class _MistBackdrop extends StatelessWidget {
   }
 }
 
-/// The church's mark, with the construction lines that run past its corners
-/// continued to the edges of the screen.
+/// The church's logo, settling into place.
 class _LogoStage extends StatelessWidget {
-  const _LogoStage({required this.lines, required this.mark});
+  const _LogoStage({required this.mark});
 
-  final Animation<double> lines;
   final Animation<double> mark;
 
-  static const logoWidth = 136.0;
+  static const logoHeight = 200.0;
 
   /// Below the middle, nearer the words it introduces.
   static const alignment = Alignment(0, 0.3);
 
   @override
   Widget build(BuildContext context) {
-    final logoSize = _ConstructionLines.logoSizeFor(logoWidth);
     return ExcludeSemantics(
       child: ConstrainedBox(
-        // On short screens the page scrolls instead of crushing the mark.
-        constraints: const BoxConstraints(minHeight: 240),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _ConstructionLines(
-                  progress: lines,
-                  logoSize: logoSize,
-                  alignment: alignment,
-                ),
-              ),
+        // On short screens the page scrolls instead of crushing the logo.
+        constraints: const BoxConstraints(minHeight: 300),
+        child: Align(
+          alignment: alignment,
+          child: FadeTransition(
+            opacity: mark,
+            child: ScaleTransition(
+              scale: Tween(begin: 0.94, end: 1.0).animate(mark),
+              child: const ChurchLogo(height: logoHeight, onDark: true),
             ),
-            Align(
-              alignment: alignment,
-              child: FadeTransition(
-                opacity: mark,
-                child: ScaleTransition(
-                  scale: Tween(begin: 0.94, end: 1.0).animate(mark),
-                  child: SvgPicture.asset(
-                    CccAssets.logo,
-                    width: logoSize.width,
-                    height: logoSize.height,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
-}
-
-/// Paints a soft gold glow behind the mark and draws its construction lines
-/// outward from where they leave the mark, fading as they go.
-class _ConstructionLines extends CustomPainter {
-  _ConstructionLines({
-    required this.progress,
-    required this.logoSize,
-    required this.alignment,
-  }) : super(repaint: progress);
-
-  final Animation<double> progress;
-  final Size logoSize;
-  final Alignment alignment;
-
-  // Positions are measured on the logo rendered at 10× its SVG size.
-  static const _artWidth = 1730.0;
-  static const _artHeight = 1500.0;
-
-  /// The floor line, whose short stubs stand out past both walls.
-  static const _floorY = 1187.5;
-  static const _floorStubEnds = (20.0, 1665.0);
-
-  /// The two posts that rise past the roof and drop past the floor.
-  static const _postsX = (401.0, 1334.0);
-  static const _postsTop = 92.0;
-
-  /// The roof lines leave the artwork at its sides, falling 0.54 per unit.
-  static const _roofSideY = 676.0;
-  static const _roofSlope = 0.54;
-
-  static Size logoSizeFor(double width) =>
-      Size(width, width * _artHeight / _artWidth);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final t = progress.value;
-    if (t == 0) return;
-    final logo = alignment.inscribe(logoSize, Offset.zero & size);
-    Offset at(double x, double y) => Offset(
-      logo.left + x / _artWidth * logo.width,
-      logo.top + y / _artHeight * logo.height,
-    );
-
-    final glowRadius = logo.width * 1.7;
-    canvas.drawCircle(
-      logo.center,
-      glowRadius,
-      Paint()
-        ..shader = ui.Gradient.radial(logo.center, glowRadius, [
-          CccNight.glow.withValues(alpha: CccNight.glow.a * t),
-          CccNight.glow.withValues(alpha: 0),
-        ]),
-    );
-
-    final floorY = at(0, _floorY).dy;
-    final postsTop = at(0, _postsTop).dy;
-    final leftPost = at(_postsX.$1, 0).dx;
-    final rightPost = at(_postsX.$2, 0).dx;
-    final roofLeft = at(0, _roofSideY);
-    final roofRight = at(_artWidth, _roofSideY);
-    final toRightEdge = size.width - roofRight.dx;
-    final segments = [
-      (at(_floorStubEnds.$1, _floorY), Offset(0, floorY)),
-      (at(_floorStubEnds.$2, _floorY), Offset(size.width, floorY)),
-      (Offset(leftPost, postsTop), Offset(leftPost, 0)),
-      (Offset(rightPost, postsTop), Offset(rightPost, 0)),
-      (Offset(leftPost, logo.bottom), Offset(leftPost, size.height)),
-      (Offset(rightPost, logo.bottom), Offset(rightPost, size.height)),
-      (roofLeft, roofLeft + Offset(-roofLeft.dx, roofLeft.dx * _roofSlope)),
-      (roofRight, roofRight + Offset(toRightEdge, toRightEdge * _roofSlope)),
-    ];
-    for (final (start, end) in segments) {
-      if ((end - start).distance < 1) continue;
-      canvas.drawLine(
-        start,
-        Offset.lerp(start, end, t)!,
-        Paint()
-          ..strokeWidth = 1
-          ..shader = ui.Gradient.linear(start, end, [
-            CccNight.line,
-            CccNight.line.withValues(alpha: 0),
-          ]),
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_ConstructionLines old) =>
-      old.logoSize != logoSize || old.alignment != alignment;
 }
 
 /// The church's name, lit from above.
