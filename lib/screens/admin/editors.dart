@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/admin_drafts.dart';
+import '../../models/member_details.dart';
+import '../../services/church_query.dart';
 import '../../theme/ccc_theme.dart';
 import '../../widgets/admin_form.dart';
 import '../../widgets/ccc_widgets.dart';
+import '../../widgets/option_chips.dart';
 import 'admin_lists.dart';
 import 'content_editor.dart';
 
@@ -728,6 +733,24 @@ class _MinistryEditorState extends State<MinistryEditor>
   List<String> savedPaths = [];
   String? nameError;
 
+  /// Who qualifies: see [MinistryDraft.addsMembers].
+  bool addsMembers = false;
+  final minAge = TextEditingController();
+  final maxAge = TextEditingController();
+  Gender? forGender;
+  Set<MaritalStatus> forMaritalStatuses = {};
+  bool? forStudents;
+  String? ageError;
+  String? rulesError;
+
+  /// Members ask to join and a leader approves them; never with
+  /// [addsMembers]. Leaders are saved as soon as they're added or removed.
+  bool needsApproval = false;
+  List<String>? leaders;
+  final leaderEmail = TextEditingController();
+  String? leaderError;
+  bool leaderBusy = false;
+
   @override
   void fill(Map<String, dynamic>? row) {
     if (row == null) {
@@ -735,6 +758,14 @@ class _MinistryEditorState extends State<MinistryEditor>
       return;
     }
     final draft = MinistryDraft.fromRow(row);
+    addsMembers = draft.addsMembers;
+    minAge.text = draft.minAge?.toString() ?? '';
+    maxAge.text = draft.maxAge?.toString() ?? '';
+    forGender = draft.forGender;
+    forMaritalStatuses = draft.forMaritalStatuses;
+    forStudents = draft.forStudents;
+    needsApproval = draft.needsApproval;
+    unawaited(_loadLeaders(row['id'] as String));
     name.text = draft.name;
     focus.text = draft.focus;
     about.text = draft.about;
@@ -757,17 +788,160 @@ class _MinistryEditorState extends State<MinistryEditor>
       venue,
       members,
       order,
+      minAge,
+      maxAge,
+      leaderEmail,
     ]) {
       controller.dispose();
     }
     super.dispose();
   }
 
+  /// An age field: empty is no limit; null when it isn't a whole number
+  /// from 0 to 120.
+  ({bool valid, int? age}) _age(TextEditingController field) {
+    final text = field.text.trim();
+    if (text.isEmpty) return (valid: true, age: null);
+    final age = int.tryParse(text);
+    final valid = age != null && age >= 0 && age <= 120;
+    return (valid: valid, age: valid ? age : null);
+  }
+
+  Future<void> _loadLeaders(String id) async {
+    try {
+      final found = await admin.leaders(id);
+      if (mounted) setState(() => leaders = found);
+    } on ChurchDataException catch (e) {
+      if (mounted) setState(() => leaderError = e.message);
+    }
+  }
+
+  Future<void> _addLeader() async {
+    final id = editingId;
+    if (id == null) return;
+    final address = leaderEmail.text.trim().toLowerCase();
+    final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(address);
+    setState(() => leaderError = valid ? null : 'Enter their sign-in email.');
+    if (!valid) return;
+    setState(() => leaderBusy = true);
+    try {
+      await admin.addLeader(id, address);
+      leaderEmail.clear();
+      await _loadLeaders(id);
+    } on ChurchDataException catch (e) {
+      if (mounted) showCccMessage(context, e.message);
+    } finally {
+      if (mounted) setState(() => leaderBusy = false);
+    }
+  }
+
+  Future<void> _removeLeader(String email) async {
+    final id = editingId;
+    if (id == null) return;
+    try {
+      await admin.removeLeader(id, email);
+      await _loadLeaders(id);
+    } on ChurchDataException catch (e) {
+      if (mounted) showCccMessage(context, e.message);
+    }
+  }
+
+  /// The ministry's leaders, who answer its requests to join.
+  Widget _leaders() {
+    final p = context.palette;
+    final muted = TextStyle(fontSize: 13.5, height: 1.45, color: p.textMuted);
+    if (editingId == null) {
+      return Text('Save the ministry, then add its leaders here.', style: muted);
+    }
+    final leaders = this.leaders;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const FieldLabel('Leaders'),
+        const SizedBox(height: 8),
+        if (leaders == null)
+          Text('Loading leaders…', style: muted)
+        else if (leaders.isEmpty)
+          Text(
+            'No leaders yet. Until you add some, staff who manage this '
+            'ministry answer its requests.',
+            style: muted,
+          )
+        else
+          CccCard(
+            child: Column(
+              children: [
+                for (final (index, email) in leaders.indexed) ...[
+                  if (index > 0) const Divider(height: 1),
+                  ListTile(
+                    title: Text(
+                      email,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: p.text,
+                      ),
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Remove $email',
+                      onPressed: () => _removeLeader(email),
+                      icon: Icon(Icons.person_remove_outlined, color: p.error),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        const SizedBox(height: 16),
+        LabeledField(
+          label: "Leader's sign-in email",
+          controller: leaderEmail,
+          error: leaderError,
+          keyboardType: TextInputType.emailAddress,
+          capitalization: TextCapitalization.none,
+          helper:
+              'They need a CCC account with this email. Leaders answer '
+              'requests to join this ministry and nothing else.',
+        ),
+        const SizedBox(height: 12),
+        CccButton(
+          label: 'Add leader',
+          variant: CccButtonVariant.outlined,
+          height: 44,
+          fontSize: 15,
+          isLoading: leaderBusy,
+          onPressed: _addLeader,
+        ),
+      ],
+    );
+  }
+
   void _save() {
+    final from = _age(minAge), to = _age(maxAge);
+    // Switching it off clears the rules, so none linger unseen.
+    final rules = MinistryDraft(
+      addsMembers: addsMembers,
+      minAge: addsMembers ? from.age : null,
+      maxAge: addsMembers ? to.age : null,
+      forGender: addsMembers ? forGender : null,
+      forMaritalStatuses: addsMembers ? forMaritalStatuses : {},
+      forStudents: addsMembers ? forStudents : null,
+    );
+    final (minimum, maximum) = (from.age, to.age);
     setState(() {
       nameError = name.text.trim().isEmpty ? 'Give the ministry a name.' : null;
+      ageError =
+          addsMembers &&
+              (!from.valid ||
+                  !to.valid ||
+                  (minimum != null && maximum != null && minimum > maximum))
+          ? 'Enter whole numbers from 0 to 120, youngest first.'
+          : null;
+      rulesError = addsMembers && ageError == null && !rules.hasRule
+          ? 'Set at least one rule, or switch this off.'
+          : null;
     });
-    if (nameError != null) return;
+    if (nameError != null || ageError != null || rulesError != null) return;
     final kept = {for (final photo in photos) ?photo.path};
     commit(
       () async {
@@ -781,6 +955,13 @@ class _MinistryEditorState extends State<MinistryEditor>
           membersLabel: members.text,
           sortOrder: int.tryParse(order.text.trim()) ?? 0,
           imagePaths: await storePhotos(photos),
+          addsMembers: rules.addsMembers,
+          minAge: rules.minAge,
+          maxAge: rules.maxAge,
+          forGender: rules.forGender,
+          forMaritalStatuses: rules.forMaritalStatuses,
+          forStudents: rules.forStudents,
+          needsApproval: needsApproval,
         );
         await admin.save(kind, editingId, draft.toRow());
       },
@@ -884,6 +1065,113 @@ class _MinistryEditorState extends State<MinistryEditor>
             ],
           ),
           FormSection(
+            title: 'Joining',
+            children: [
+              SwitchRow(
+                title: 'Leader approves new members',
+                subtitle:
+                    'Members ask to join, and a leader says yes or no. For '
+                    'ministries like Media or Choir.',
+                value: needsApproval,
+                onChanged: (value) => setState(() {
+                  needsApproval = value;
+                  if (value) addsMembers = false;
+                  dirty = true;
+                }),
+              ),
+              if (needsApproval) _leaders(),
+              SwitchRow(
+                title: 'Add members who qualify',
+                subtitle:
+                    'Members whose details meet every rule are added for '
+                    'them, and can leave at any time. Their details stay '
+                    'private.',
+                value: addsMembers,
+                onChanged: (value) => setState(() {
+                  addsMembers = value;
+                  if (value) needsApproval = false;
+                  rulesError = null;
+                  dirty = true;
+                }),
+              ),
+              if (addsMembers) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: LabeledField(
+                        label: 'From age',
+                        controller: minAge,
+                        keyboardType: TextInputType.number,
+                        onChanged: _changed,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: LabeledField(
+                        label: 'To age',
+                        controller: maxAge,
+                        keyboardType: TextInputType.number,
+                        onChanged: _changed,
+                      ),
+                    ),
+                  ],
+                ),
+                if (ageError != null) _RuleError(ageError!),
+                _Rule(
+                  label: 'Gender',
+                  child: OptionChips<Gender>(
+                    options: [for (final g in Gender.values) (g, g.groupLabel)],
+                    selected: {?forGender},
+                    onChanged: (value) => setState(() {
+                      forGender = value.firstOrNull;
+                      dirty = true;
+                    }),
+                  ),
+                ),
+                _Rule(
+                  label: 'Marital status',
+                  child: OptionChips<MaritalStatus>(
+                    multiple: true,
+                    options: [
+                      for (final status in MaritalStatus.values)
+                        (status, status.label),
+                    ],
+                    selected: forMaritalStatuses,
+                    onChanged: (value) => setState(() {
+                      forMaritalStatuses = value;
+                      dirty = true;
+                    }),
+                  ),
+                ),
+                _Rule(
+                  label: 'Students',
+                  child: OptionChips<bool>(
+                    options: const [
+                      (true, 'Students only'),
+                      (false, 'Not students'),
+                    ],
+                    selected: {?forStudents},
+                    onChanged: (value) => setState(() {
+                      forStudents = value.firstOrNull;
+                      dirty = true;
+                    }),
+                  ),
+                ),
+                Text(
+                  'A rule left empty lets anyone through. Pick several '
+                  'marital statuses if any of them qualifies.',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.45,
+                    color: context.palette.textMuted,
+                  ),
+                ),
+                if (rulesError != null) _RuleError(rulesError!),
+              ],
+            ],
+          ),
+          FormSection(
             title: 'Photos',
             children: [
               PhotoChooser(
@@ -920,4 +1208,30 @@ class _MinistryEditorState extends State<MinistryEditor>
       ),
     );
   }
+}
+
+/// One rule on the Who qualifies form: its name above its choices.
+class _Rule extends StatelessWidget {
+  const _Rule({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [FieldLabel(label), const SizedBox(height: 8), child],
+  );
+}
+
+class _RuleError extends StatelessWidget {
+  const _RuleError(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    message,
+    style: TextStyle(fontSize: 13, color: context.palette.error),
+  );
 }

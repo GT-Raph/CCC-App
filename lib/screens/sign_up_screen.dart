@@ -23,6 +23,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   ChurchBranch? branch;
   bool isSubmitting = false;
 
+  String? get passwordMismatch {
+    final password = passwordController.text;
+    final confirmation = confirmController.text;
+    if (password.isEmpty || confirmation.isEmpty || password == confirmation) {
+      return null;
+    }
+    return 'Passwords do not match.';
+  }
+
   @override
   void dispose() {
     for (final controller in [
@@ -146,6 +155,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               controller: passwordController,
               isPassword: true,
               autofillHints: const [AutofillHints.newPassword],
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 16),
             AuthField(
@@ -154,6 +164,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               isPassword: true,
               textInputAction: TextInputAction.done,
               autofillHints: const [AutofillHints.newPassword],
+              error: passwordMismatch,
+              onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 16),

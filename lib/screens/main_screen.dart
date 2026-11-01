@@ -7,6 +7,7 @@ import '../models/admin_drafts.dart';
 import '../models/church_branch.dart';
 import '../models/event.dart';
 import '../models/live_stream.dart';
+import '../models/member_details.dart';
 import '../models/news.dart';
 import '../models/sermon.dart';
 import '../navigation.dart';
@@ -24,6 +25,8 @@ import '../widgets/ccc_widgets.dart';
 import '../widgets/sermon_player_view.dart';
 import 'admin/admin_lists.dart';
 import 'event_details_screen.dart';
+import 'join_requests_screen.dart';
+import 'member_details_screen.dart';
 import 'ministry_details_screen.dart';
 
 String greetingFor(DateTime time) => time.hour < 12
@@ -151,26 +154,77 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  /// Sets up the member's (or guest's) branch for the Sermons tab, and asks
-  /// members who don't have a branch yet to choose one.
+  /// Sets up the member's (or guest's) branch for the Sermons tab, asks
+  /// members who don't have a branch yet to choose one, then asks members
+  /// once about themselves for their ministries.
   Future<void> _startListening() async {
     if (!mounted) return;
     final state = CccScope.of(context);
     final library = state.sermons;
     unawaited(state.reminders.restore());
     unawaited(state.ministries.useMember(widget.member));
-    unawaited(state.staff.useMember(widget.member));
+    final staffLoaded = state.staff.useMember(widget.member);
     await library.useListener(widget.member);
     if (!mounted) return;
     _loadTab(tab);
-    if (widget.member == null ||
-        library.branch != null ||
-        !library.isConfigured) {
-      return;
+    if (widget.member == null || !library.isConfigured) return;
+    if (library.branch == null) {
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+      if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+      await _chooseBranch(firstTime: true);
+      if (!mounted) return;
     }
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
-    await _chooseBranch(firstTime: true);
+    await _aboutYou();
+    await staffLoaded;
+    if (mounted) _tellAboutRequests();
+  }
+
+  /// Tells ministry leaders, as the app opens, that requests to join are
+  /// waiting for them; queued after any other message.
+  void _tellAboutRequests() {
+    final waiting = CccScope.of(context).staff.waitingRequests;
+    if (waiting == 0) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          waiting == 1
+              ? 'A request to join is waiting for your answer.'
+              : '$waiting requests to join are waiting for your answer.',
+        ),
+        action: SnackBarAction(label: 'Review', onPressed: _openJoinRequests),
+      ),
+    );
+  }
+
+  void _openJoinRequests() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const JoinRequestsScreen()),
+    );
+  }
+
+  /// Asks the member about themselves once, so they can be added to the
+  /// ministries that are for them. After that, it brings those ministries up
+  /// to date each time the app opens, since birthdays move people between
+  /// age groups.
+  Future<void> _aboutYou() async {
+    final asked = await CccScope.of(context).ministries.detailsAsked();
+    if (!mounted || asked == null) return;
+    if (asked) return _matchMinistries();
+    if (ModalRoute.of(context)?.isCurrent ?? false) {
+      await openMemberDetails(context, firstTime: true);
+    }
+  }
+
+  /// Joins the ministries the member now qualifies for, and says which.
+  Future<void> _matchMinistries() async {
+    try {
+      final added = await CccScope.of(context).ministries.matchAutomatic();
+      if (mounted && added.isNotEmpty) {
+        showCccMessage(context, addedToMinistriesMessage(added));
+      }
+    } catch (_) {
+      // Tried again the next time the app opens.
+    }
   }
 
   Future<void> _chooseBranch({bool firstTime = false}) async {
@@ -188,6 +242,9 @@ class _MainScreenState extends State<MainScreen> {
       await library.chooseBranch(chosen);
       if (mounted && !isGuest) {
         showCccMessage(context, 'Your branch is now ${chosen.name}.');
+        // A new branch has its own ministries; the first time, asking
+        // about the member does this.
+        if (!firstTime) unawaited(_matchMinistries());
       }
     } catch (_) {
       if (mounted) {
@@ -293,6 +350,40 @@ class _MainScreenState extends State<MainScreen> {
                       _chooseBranch();
                     },
                   ),
+                ),
+                const SizedBox(height: 12),
+                _AccountRow(
+                  icon: Icons.person_outline,
+                  label: 'About you',
+                  value: 'For matching you with ministries',
+                  action: 'Edit',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    openMemberDetails(context);
+                  },
+                ),
+                // Leaders, and staff who manage ministries that approve
+                // their members.
+                ListenableBuilder(
+                  listenable: CccScope.of(context).staff,
+                  builder: (_, _) {
+                    final staff = CccScope.of(context).staff;
+                    if (staff.approvals.isEmpty) return const SizedBox.shrink();
+                    final waiting = staff.waitingRequests;
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: _AccountRow(
+                        icon: Icons.how_to_reg_outlined,
+                        label: 'Join requests',
+                        value: waiting == 0 ? 'None waiting' : '$waiting waiting',
+                        action: 'Review',
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          _openJoinRequests();
+                        },
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
                 if (CccScope.of(context).staff.isStaff) ...[
@@ -546,7 +637,7 @@ extension on _MainScreenState {
             for (final ministry in visible)
               MinistryCard(
                 ministry: ministry,
-                joined: directory.hasJoined(ministry.id),
+                standing: directory.standing(ministry.id),
                 onOpen: () => CccNavigation.openMinistry(
                   context,
                   ministry,
@@ -1046,6 +1137,77 @@ class _AccountBranch extends StatelessWidget {
             ),
             child: Text(
               branch == null ? 'Choose' : 'Change',
+              style: const TextStyle(
+                fontFamily: CccFonts.openSans,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A row in the account sheet: what it is, its value, and one action.
+class _AccountRow extends StatelessWidget {
+  const _AccountRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.action,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String action;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return CccCard(
+      padding: const EdgeInsets.fromLTRB(16, 6, 6, 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: p.textMuted),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: p.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.3,
+                    color: p.text,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onTap,
+            style: TextButton.styleFrom(
+              foregroundColor: p.accentText,
+              minimumSize: const Size(64, 44),
+            ),
+            child: Text(
+              action,
               style: const TextStyle(
                 fontFamily: CccFonts.openSans,
                 fontSize: 14.5,

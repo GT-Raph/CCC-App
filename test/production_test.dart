@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:ccc_app/models/event.dart';
+import 'package:ccc_app/models/ministry.dart';
 import 'package:ccc_app/screens/main_screen.dart';
 import 'package:ccc_app/services/content_service.dart';
 import 'package:ccc_app/services/event_service.dart';
@@ -239,11 +240,11 @@ void main() {
       'joins persist across reload and leave removes the saved membership',
       () async {
         final item = ministry('women', 'Women');
-        expect(await directory.toggle(item), true);
+        expect(await directory.toggle(item), MembershipChange.joined);
         expect(source.joinedIds, {'women'});
         await directory.useMember(ama);
         expect(directory.hasJoined('women'), true);
-        expect(await directory.toggle(item), false);
+        expect(await directory.toggle(item), MembershipChange.left);
         expect(source.joinedIds, isEmpty);
       },
     );
@@ -267,8 +268,8 @@ void main() {
         expect(source.joins, 1);
         expect(directory.hasJoined('women'), false);
         source.writeGate!.complete();
-        expect(await first, true);
-        expect(await second, true);
+        expect(await first, MembershipChange.joined);
+        expect(await second, MembershipChange.joined);
       },
     );
 

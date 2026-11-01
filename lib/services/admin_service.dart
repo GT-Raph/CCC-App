@@ -44,9 +44,37 @@ abstract interface class AdminSource {
 
   Future<List<StaffMember>> staff();
 
-  Future<void> addStaff(String email, String? branchId);
+  /// Gives [email] access, or changes the access they have. Only someone
+  /// with no [branchId] can be a [superAdmin].
+  Future<void> addStaff(
+    String email,
+    String? branchId, {
+    bool superAdmin = false,
+  });
 
   Future<void> removeStaff(String email);
+
+  /// The sign-in emails of [ministryId]'s leaders, who answer its requests
+  /// to join (supabase/ministry_approval.sql).
+  Future<List<String>> leaders(String ministryId);
+
+  Future<void> addLeader(String ministryId, String email);
+
+  Future<void> removeLeader(String ministryId, String email);
+
+  /// The ministries whose requests to join the signed-in member answers, as
+  /// a leader or as staff who manage them. Leaders needn't be staff.
+  Future<List<ApprovalMinistry>> ministriesToApprove();
+
+  /// Requests to join [ministryId] waiting for an answer, oldest first.
+  Future<List<JoinRequest>> joinRequests(String ministryId);
+
+  /// Approving adds the member to the ministry.
+  Future<void> answerRequest(
+    String ministryId,
+    String memberId, {
+    required bool approve,
+  });
 }
 
 /// [AdminSource] on Supabase.
@@ -62,11 +90,14 @@ class AdminService implements AdminSource {
   Future<StaffRole?> myRole() async {
     if (_client.auth.currentUser == null) return null;
     final rows = await churchQuery('Staff', () async {
-      final result = await _client.rpc<List<dynamic>>('staff_scope');
+      final result = await _client.rpc<List<dynamic>>('staff_role');
       return result.cast<Map<String, dynamic>>();
     });
     if (rows.isEmpty) return null;
-    return StaffRole(branchId: rows.first['branch_id'] as String?);
+    return StaffRole(
+      branchId: rows.first['branch_id'] as String?,
+      superAdmin: rows.first['super_admin'] as bool? ?? false,
+    );
   }
 
   @override
@@ -203,18 +234,23 @@ class AdminService implements AdminSource {
       'Staff',
       () => _client
           .from('staff')
-          .select('email, branch_id, branches(name)')
+          .select('email, branch_id, super_admin, branches(name)')
           .order('email'),
     );
     return [for (final row in rows) StaffMember.fromRow(row)];
   }
 
   @override
-  Future<void> addStaff(String email, String? branchId) async {
+  Future<void> addStaff(
+    String email,
+    String? branchId, {
+    bool superAdmin = false,
+  }) async {
     await churchQuery('Staff', () async {
       await _client.from('staff').upsert({
         'email': email.trim().toLowerCase(),
         'branch_id': branchId,
+        'super_admin': superAdmin && branchId == null,
       });
       return const <Map<String, dynamic>>[];
     }, saving: true);
@@ -224,6 +260,79 @@ class AdminService implements AdminSource {
   Future<void> removeStaff(String email) async {
     await churchQuery('Staff', () async {
       await _client.from('staff').delete().eq('email', email);
+      return const <Map<String, dynamic>>[];
+    }, saving: true);
+  }
+
+  @override
+  Future<List<String>> leaders(String ministryId) async {
+    final rows = await churchQuery(
+      'Leaders',
+      () => _client
+          .from('ministry_leaders')
+          .select('email')
+          .eq('ministry_id', ministryId)
+          .order('email'),
+    );
+    return [for (final row in rows) row['email'] as String];
+  }
+
+  @override
+  Future<void> addLeader(String ministryId, String email) async {
+    await churchQuery('Leaders', () async {
+      await _client.from('ministry_leaders').upsert({
+        'ministry_id': ministryId,
+        'email': email.trim().toLowerCase(),
+      });
+      return const <Map<String, dynamic>>[];
+    }, saving: true);
+  }
+
+  @override
+  Future<void> removeLeader(String ministryId, String email) async {
+    await churchQuery('Leaders', () async {
+      await _client
+          .from('ministry_leaders')
+          .delete()
+          .eq('ministry_id', ministryId)
+          .eq('email', email);
+      return const <Map<String, dynamic>>[];
+    }, saving: true);
+  }
+
+  @override
+  Future<List<ApprovalMinistry>> ministriesToApprove() async {
+    if (_client.auth.currentUser == null) return const [];
+    final rows = await churchQuery('Join requests', () async {
+      final result = await _client.rpc<List<dynamic>>('ministries_to_approve');
+      return result.cast<Map<String, dynamic>>();
+    });
+    return [for (final row in rows) ApprovalMinistry.fromRow(row)];
+  }
+
+  @override
+  Future<List<JoinRequest>> joinRequests(String ministryId) async {
+    final rows = await churchQuery('Join requests', () async {
+      final result = await _client.rpc<List<dynamic>>(
+        'ministry_requests_for',
+        params: {'target': ministryId},
+      );
+      return result.cast<Map<String, dynamic>>();
+    });
+    return [for (final row in rows) JoinRequest.fromRow(row)];
+  }
+
+  @override
+  Future<void> answerRequest(
+    String ministryId,
+    String memberId, {
+    required bool approve,
+  }) async {
+    await churchQuery('Join requests', () async {
+      await _client.rpc(
+        'answer_ministry_request',
+        params: {'target': ministryId, 'member': memberId, 'approve': approve},
+      );
       return const <Map<String, dynamic>>[];
     }, saving: true);
   }

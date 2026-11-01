@@ -10,6 +10,7 @@ import 'support/fakes.dart';
 
 const botweStaff = StaffRole(branchId: 'b-botwe');
 const churchAdmin = StaffRole();
+const superAdmin = StaffRole(superAdmin: true);
 
 /// Pumps [home] for a signed-in member whose staff role is [role].
 Future<Harness> pumpAs(
@@ -274,15 +275,26 @@ void main() {
     expect(harness.admin!.saved, isEmpty);
   });
 
-  testWidgets('only church-wide admins manage staff', (tester) async {
+  testWidgets('branch staff do not manage staff', (tester) async {
     await pumpAs(tester, botweStaff, const AdminHomeScreen());
     expect(find.text('Staff'), findsNothing);
   });
 
-  testWidgets('church-wide admins add staff by email', (tester) async {
+  testWidgets('HQ admins post church-wide but do not manage staff', (
+    tester,
+  ) async {
+    await pumpAs(tester, churchAdmin, const AdminHomeScreen());
+    expect(find.text('HQ admin: every branch'), findsOneWidget);
+    expect(find.text('Staff'), findsNothing);
+  });
+
+  testWidgets('super admins add staff by email', (tester) async {
     final admin = FakeAdmin()
-      ..staffList.add(const StaffMember(email: 'ama@example.com'));
-    await pumpAs(tester, churchAdmin, const AdminHomeScreen(), admin: admin);
+      ..staffList.add(
+        const StaffMember(email: 'ama@example.com', superAdmin: true),
+      );
+    await pumpAs(tester, superAdmin, const AdminHomeScreen(), admin: admin);
+    expect(find.text('Super admin: every branch, and staff'), findsOneWidget);
     await tester.tap(find.text('Staff'));
     await tester.pumpAndSettle();
 
@@ -294,13 +306,41 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('CCC Botwe').last);
     await tester.pumpAndSettle();
+    // Super admins are church-wide, so branch staff can't be one.
+    expect(find.text('Super admin'), findsNothing);
     await tester.tap(find.text('Add staff'));
     await tester.pumpAndSettle();
 
     expect(admin.added.single.email, 'media@botwe.org');
     expect(admin.added.single.branchId, 'b-botwe');
+    expect(admin.added.single.superAdmin, isFalse);
     expect(find.text('CCC Botwe staff'), findsNothing);
     expect(find.text('media@botwe.org'), findsOneWidget);
+  });
+
+  testWidgets('super admins appoint another super admin', (tester) async {
+    final admin = FakeAdmin()
+      ..staffList.add(
+        const StaffMember(email: 'ama@example.com', superAdmin: true),
+      );
+    await pumpAs(tester, superAdmin, const AdminHomeScreen(), admin: admin);
+    await tester.tap(find.text('Staff'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'pastor@church.org');
+    await tester.tap(find.text('Super admin'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add staff'));
+    await tester.pumpAndSettle();
+
+    expect(admin.added.single.email, 'pastor@church.org');
+    expect(admin.added.single.branchId, isNull);
+    expect(admin.added.single.superAdmin, isTrue);
+    expect(find.text('Super admin, every branch'), findsNWidgets(2));
+    expect(
+      find.text('pastor@church.org can now post and manage staff.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('details show Edit only for content the staff member manages', (

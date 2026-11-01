@@ -35,7 +35,11 @@ For a new database, run [schema.sql](supabase/schema.sql), then review and run
 [branches.sql](supabase/branches.sql). For the existing CCC database, run
 [content.sql](supabase/content.sql) to add news, ministries, memberships and
 their storage buckets. Then run [staff.sql](supabase/staff.sql) so staff can
-post from the app. These scripts add no example content.
+post from the app, [ministry_matching.sql](supabase/ministry_matching.sql)
+so members are added to the ministries that are for them, and
+[ministry_approval.sql](supabase/ministry_approval.sql) so ministries such as
+Media or Choir approve their new members. Run them in that order, and again
+in that order after updating the app. These scripts add no example content.
 
 `branches.sql` contains Google listing IDs collected for the church. Church
 staff must verify branch names and duplicates before release. Renaming a row
@@ -44,17 +48,21 @@ without reviewing the consequences.
 
 Row-level security allows public reading of published church content, while
 members can read and change only their own ministry memberships and profiles.
-Only people listed in the `staff` table can publish content or upload media.
+The details members give for ministry matching (`member_details`) can be read
+only by that member; staff never see them, and the matching runs inside the
+database. Only people listed in the `staff` table can publish content or
+upload media.
 Check the deployed policies, including storage policies, before release.
 
 ## Posting from the app
 
 Church staff publish news, events, sermons and ministries inside the app, with
-no SQL. There are two levels of access:
+no SQL. There are three levels of access:
 
-| Level | `staff.branch_id` | Can manage |
+| Level | `staff` row | Can manage |
 | --- | --- | --- |
-| HQ admin | empty | Church-wide news, sermons and ministries, events shown to every branch, any single branch's content, and the staff list |
+| Super admin | `branch_id` empty, `super_admin` ticked | Everything an HQ admin can, and the staff list: who is staff, for which branch, and who else is a super admin |
+| HQ admin | `branch_id` empty | Church-wide news, sermons and ministries, events shown to every branch, and any single branch's content |
 | Branch staff | their branch | Only their own branch's news, events, sermons and ministries |
 
 Branch staff can never post for another branch or for every branch. The
@@ -69,8 +77,13 @@ publish for the whole church.
 1. Run [staff.sql](supabase/staff.sql) after `schema.sql` or `content.sql`.
 2. The first admin signs up in the app and confirms their email.
 3. In **Table Editor → staff** (schema `public`), insert one row: their
-   sign-in email in lower case, with `branch_id` left empty. This makes them
-   an HQ admin, and it is the only dashboard step.
+   sign-in email in lower case, with `branch_id` left empty and
+   `super_admin` ticked. This makes them the first super admin, and it is the
+   only dashboard step.
+
+To update a database set up before super admins existed, run `staff.sql`
+again. If it has HQ admins but no super admin, the HQ admin added first
+becomes the super admin and can appoint others from the app.
 
 **Day to day**
 
@@ -78,10 +91,13 @@ publish for the whole church.
   tab's list, and **Edit** on details screens for content they manage.
 - **Account → Manage church content** lists everything they can edit,
   including scheduled news, and opens the same forms.
-- HQ admins add or remove staff in **Manage church content → Staff** by
-  entering the person's sign-in email and choosing their branch (or "Every
-  branch (HQ admin)" for another HQ admin). Access starts when they next open
-  the app.
+- Super admins add, change or remove staff in **Manage church content →
+  Staff** by entering the person's sign-in email and choosing their branch,
+  or "Every branch (HQ admin)" for an HQ admin, with **Super admin** switched
+  on for another super admin. Adding someone already on the list changes
+  their access. Access starts when they next open the app.
+- The church always keeps a super admin: the last one can't be removed or
+  demoted, in the app or the dashboard, until someone else is appointed.
 - HQ admins choose **All branches** on news and sermons, **Show to every
   branch** on events, or **Church-wide** on ministries. Branch staff's forms
   are fixed to their own branch.
@@ -118,6 +134,45 @@ Leave it empty unless the church has supplied a verified figure.
 Memberships are stored in `ministry_members`; dashboard staff can review the
 `ministry_signups` view. The app changes its Joined status after a successful
 save. Failed reads or writes do not create a successful membership in the UI.
+
+### Add members to ministries automatically
+
+After signing in, members are asked once for their date of birth, gender,
+marital status and whether they're a student. Every answer is optional, they
+can skip, and they can change them later under **Account → About you**.
+
+In a ministry's form, staff switch on **Add members who qualify** and set at
+least one rule: an age range, men or women, the marital statuses that
+qualify, or students or not. Members who meet every rule (in the ministry's
+branch, or any branch for a church-wide one) are added straight away, and
+again whenever their details, branch or age change; the app checks each time
+it opens. Members added this way who stop qualifying are taken out, but
+memberships people chose themselves are never removed. A member who leaves a
+ministry isn't added back unless they join it again themselves.
+
+In the dashboard, the rules are the `ministries` columns `auto_assign`,
+`min_age`, `max_age`, `for_gender`, `for_marital_statuses` and
+`for_students`; `ministry_members.added_automatically` marks automatic
+memberships.
+
+### Ministries that approve their members
+
+For ministries such as Media or Choir, staff switch on **Leader approves new
+members** in the ministry's form and add its leaders by the email they sign in
+with. Leaders needn't be staff: they answer requests to join that ministry and
+nothing else. Until a ministry has leaders, the staff who manage it answer.
+A ministry that approves its members can't also add them automatically.
+
+Members tap **Ask to join** and see **Requested** until a leader answers; they
+can withdraw a request that hasn't been answered. Leaders are told when they
+open the app that requests are waiting, and answer them under **Account →
+Join requests**, seeing each person's name and branch only. Approving adds
+the member; declining is shown to the member, who can ask again later.
+Members can't add themselves to these ministries any other way: the database
+refuses it.
+
+In the dashboard, the switch is `ministries.needs_approval`; leaders are in
+`ministry_leaders` and requests in `ministry_requests`.
 
 ### Publish events
 
@@ -210,8 +265,10 @@ node --test test/check_live_streams_test.mjs
 flutter build apk --debug
 ```
 
-The last test checks the staff permissions in `staff.sql` against a local
-PostgreSQL; see [supabase/tests](supabase/tests/README.md).
+The last test checks the staff permissions in `staff.sql`, the ministry
+matching in `ministry_matching.sql` and the approvals in
+`ministry_approval.sql` against a local PostgreSQL; see
+[supabase/tests](supabase/tests/README.md).
 
 The app icons are generated from the church logo in `assets/launcher/`
 (on the welcome screen's warm night, adaptive on Android 8+). The logo's

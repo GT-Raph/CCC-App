@@ -33,9 +33,10 @@ That is not a test of the deployed project.
 - Test staff access with real accounts: a branch staff member can post and
   upload only for their branch, never for every branch, and cannot see the
   Staff screen; an HQ admin can post church-wide news, sermons, ministries and
-  all-branch events and add or remove staff; removed staff are
-  refused at once and lose the staff buttons after reopening the app. Upload a
-  real photo and a real sermon file.
+  all-branch events but cannot see the Staff screen; a super admin can add,
+  change and remove staff, and the last super admin can't be removed; removed
+  staff are refused at once and lose the staff buttons after reopening the
+  app. Upload a real photo and a real sermon file.
 - Review branch names, Google Place IDs and duplicate listings with church staff.
 - Upload genuine news, events, ministry details and sermon recordings. Verify
   branch-specific and church-wide visibility on actual accounts.
@@ -59,6 +60,20 @@ That is not a test of the deployed project.
   Maps directions and authentication deep links there too.
 - Complete store privacy disclosures and account deletion requirements for the
   actual features and data collection before submission.
+- The privacy policy and store disclosures must cover the details members give
+  for ministry matching (date of birth, gender, marital status, student): why
+  they're asked, that only the member can see them, and that they're deleted
+  with the account. Check the church's data-protection obligations (in Ghana,
+  the Data Protection Act, 2012) before collecting them.
+- Run `ministry_matching.sql` on the live project, then test with real
+  accounts: a member who qualifies is added when they save their details; one
+  who leaves isn't added back; staff saving a ministry's rules adds existing
+  members; and no staff account can read `member_details`.
+- Run `ministry_approval.sql` on the live project, then test with real
+  accounts: a member can only ask to join a ministry that approves its
+  members; its leader (who isn't staff) sees the request and approves or
+  declines it; the member sees the answer; and a leader of one ministry sees
+  nothing of another's requests.
 
 Automated tests use isolated fixtures in `test/` and mocked network/device
 services. They cannot verify deployed database policies, real push delivery,

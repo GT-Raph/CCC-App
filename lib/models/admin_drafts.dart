@@ -1,3 +1,5 @@
+import 'member_details.dart';
+
 /// The four kinds of church content staff manage, with where each lives in
 /// Supabase.
 enum ContentKind {
@@ -33,10 +35,14 @@ enum ContentKind {
 
 /// A staff member's reach: a church-wide admin, or one branch's staff.
 class StaffRole {
-  const StaffRole({this.branchId});
+  const StaffRole({this.branchId, this.superAdmin = false});
 
   /// Null for church-wide admins.
   final String? branchId;
+
+  /// Decides who is staff (`public.is_super_admin` in supabase/staff.sql).
+  /// Super admins are always church-wide.
+  final bool superAdmin;
 
   bool get churchWide => branchId == null;
 
@@ -48,17 +54,24 @@ class StaffRole {
 
 /// A row in the `staff` table.
 class StaffMember {
-  const StaffMember({required this.email, this.branchId, this.branchName});
+  const StaffMember({
+    required this.email,
+    this.branchId,
+    this.branchName,
+    this.superAdmin = false,
+  });
 
   factory StaffMember.fromRow(Map<String, dynamic> row) => StaffMember(
     email: row['email'] as String,
     branchId: row['branch_id'] as String?,
     branchName: (row['branches'] as Map?)?['name'] as String?,
+    superAdmin: row['super_admin'] as bool? ?? false,
   );
 
   final String email;
   final String? branchId;
   final String? branchName;
+  final bool superAdmin;
 }
 
 /// Someone who joined a ministry, as staff see them.
@@ -275,7 +288,15 @@ class MinistryDraft {
     this.about = '',
     List<String>? imagePaths,
     this.sortOrder = 0,
-  }) : imagePaths = imagePaths ?? [];
+    this.addsMembers = false,
+    this.minAge,
+    this.maxAge,
+    this.forGender,
+    Set<MaritalStatus>? forMaritalStatuses,
+    this.forStudents,
+    this.needsApproval = false,
+  }) : imagePaths = imagePaths ?? [],
+       forMaritalStatuses = forMaritalStatuses ?? {};
 
   factory MinistryDraft.fromRow(Map<String, dynamic> row) => MinistryDraft(
     id: row['id'] as String,
@@ -288,6 +309,16 @@ class MinistryDraft {
     about: _text(row, 'about'),
     imagePaths: _paths(row),
     sortOrder: row['sort_order'] as int? ?? 0,
+    addsMembers: row['auto_assign'] as bool? ?? false,
+    minAge: row['min_age'] as int?,
+    maxAge: row['max_age'] as int?,
+    forGender: Gender.fromName(row['for_gender']),
+    forMaritalStatuses: {
+      for (final value in (row['for_marital_statuses'] as List?) ?? const [])
+        ?MaritalStatus.fromName(value),
+    },
+    forStudents: row['for_students'] as bool?,
+    needsApproval: row['needs_approval'] as bool? ?? false,
   );
 
   String? id;
@@ -301,6 +332,28 @@ class MinistryDraft {
   List<String> imagePaths;
   int sortOrder;
 
+  /// Adds members who meet every rule below (supabase/ministry_matching.sql).
+  /// Unset rules don't restrict; at least one must be set.
+  bool addsMembers;
+  int? minAge;
+  int? maxAge;
+  Gender? forGender;
+  Set<MaritalStatus> forMaritalStatuses;
+
+  /// True for students only, false for those who aren't, null for anyone.
+  bool? forStudents;
+
+  /// Members ask to join and a leader approves them
+  /// (supabase/ministry_approval.sql). Never with [addsMembers].
+  bool needsApproval;
+
+  bool get hasRule =>
+      minAge != null ||
+      maxAge != null ||
+      forGender != null ||
+      forMaritalStatuses.isNotEmpty ||
+      forStudents != null;
+
   Map<String, Object?> toRow() => {
     'branch_id': branchId,
     'name': name.trim(),
@@ -311,5 +364,60 @@ class MinistryDraft {
     'about': about.trim(),
     'image_paths': imagePaths,
     'sort_order': sortOrder,
+    'auto_assign': addsMembers,
+    'min_age': minAge,
+    'max_age': maxAge,
+    'for_gender': forGender?.name,
+    'for_marital_statuses': [
+      for (final status in MaritalStatus.values)
+        if (forMaritalStatuses.contains(status)) status.name,
+    ],
+    'for_students': forStudents,
+    'needs_approval': needsApproval,
   };
+}
+
+/// A ministry whose requests to join the signed-in member answers, as its
+/// leader or as staff who manage it.
+class ApprovalMinistry {
+  const ApprovalMinistry({
+    required this.id,
+    required this.name,
+    required this.waiting,
+  });
+
+  factory ApprovalMinistry.fromRow(Map<String, dynamic> row) =>
+      ApprovalMinistry(
+        id: row['id'] as String,
+        name: row['name'] as String,
+        waiting: row['waiting'] as int? ?? 0,
+      );
+
+  final String id;
+  final String name;
+
+  /// Requests not answered yet.
+  final int waiting;
+}
+
+/// Someone asking to join a ministry, as its leaders see them.
+class JoinRequest {
+  const JoinRequest({
+    required this.memberId,
+    required this.member,
+    this.branch,
+    required this.requestedAt,
+  });
+
+  factory JoinRequest.fromRow(Map<String, dynamic> row) => JoinRequest(
+    memberId: row['user_id'] as String,
+    member: row['member'] as String? ?? 'Member',
+    branch: row['member_branch'] as String?,
+    requestedAt: DateTime.parse(row['requested_at'] as String).toLocal(),
+  );
+
+  final String memberId;
+  final String member;
+  final String? branch;
+  final DateTime requestedAt;
 }

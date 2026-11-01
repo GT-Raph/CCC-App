@@ -10,6 +10,8 @@ class Ministry {
     required this.about,
     this.images = const [],
     this.branchId,
+    this.addsMembers = false,
+    this.needsApproval = false,
   });
 
   /// A `ministries` row; [imageUrl] turns stored image paths into links.
@@ -31,6 +33,8 @@ class Ministry {
         for (final path in (row['image_paths'] as List?) ?? const [])
           imageUrl(path as String),
       ],
+      addsMembers: row['auto_assign'] as bool? ?? false,
+      needsApproval: row['needs_approval'] as bool? ?? false,
     );
   }
 
@@ -55,6 +59,13 @@ class Ministry {
   /// photos show a text-only card.
   final List<String> images;
 
+  /// Members who qualify are added automatically; one who leaves isn't
+  /// added again.
+  final bool addsMembers;
+
+  /// Members ask to join, and one of its leaders approves them.
+  final bool needsApproval;
+
   bool matches(String query) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return true;
@@ -72,3 +83,21 @@ class Ministry {
     if (venue.isNotEmpty) venue,
   ].join('\n');
 }
+
+/// Where the signed-in member stands with a ministry.
+enum MinistryStanding {
+  out,
+
+  /// Asked to join a ministry that approves its members; not answered yet.
+  asked,
+
+  /// Their last request wasn't approved. They can ask again.
+  declined,
+  joined,
+}
+
+/// A member's request to join a ministry, as they see it.
+enum RequestState { pending, declined }
+
+/// What tapping Join, Ask to join, Joined or Requested did.
+enum MembershipChange { joined, left, asked, withdrew }

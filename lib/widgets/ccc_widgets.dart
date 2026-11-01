@@ -392,6 +392,8 @@ class AuthField extends StatefulWidget {
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
     this.onSubmitted,
+    this.onChanged,
+    this.error,
     super.key,
   });
 
@@ -403,6 +405,8 @@ class AuthField extends StatefulWidget {
   final Iterable<String>? autofillHints;
   final TextCapitalization textCapitalization;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final String? error;
 
   @override
   State<AuthField> createState() => _AuthFieldState();
@@ -427,11 +431,13 @@ class _AuthFieldState extends State<AuthField> {
           autofillHints: widget.autofillHints,
           textCapitalization: widget.textCapitalization,
           onSubmitted: widget.onSubmitted,
+          onChanged: widget.onChanged,
           autocorrect: !widget.isPassword,
           enableSuggestions: !widget.isPassword,
           style: TextStyle(fontSize: 16, color: p.text),
           decoration: cccFieldDecoration(
             context,
+            error: widget.error,
             suffixIcon: widget.isPassword
                 ? IconButton(
                     onPressed: () => setState(() => obscured = !obscured),

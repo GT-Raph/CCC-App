@@ -33,6 +33,8 @@ Future<List<Map<String, dynamic>>> churchQuery(
       '42501' => "You don't have permission to do that.",
       // A required field is empty or a value isn't allowed.
       '23502' || '23514' => 'Some details are missing or not valid.',
+      // Refused by a rule worded for people, such as keeping a super admin.
+      'CC001' => error.message,
       _ when saving => "Couldn't save. Try again in a moment.",
       _ => "$what couldn't load. Try again in a moment.",
     }, setupMissing: missing);

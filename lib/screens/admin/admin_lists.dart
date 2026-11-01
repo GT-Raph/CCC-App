@@ -28,7 +28,7 @@ Future<EditorResult?> openEditor(
   );
 }
 
-/// The staff hub: every kind of content, and staff for church-wide admins.
+/// The staff hub: every kind of content, and staff for super admins.
 class AdminHomeScreen extends StatelessWidget {
   const AdminHomeScreen({super.key});
 
@@ -54,6 +54,7 @@ class AdminHomeScreen extends StatelessWidget {
     final bottom = MediaQuery.paddingOf(context).bottom;
     String scope() {
       if (role == null) return '';
+      if (role.superAdmin) return 'Super admin: every branch, and staff';
       if (role.churchWide) return 'HQ admin: every branch';
       for (final branch in state.sermons.branchList) {
         if (branch.id == role.branchId) return '${branch.name} staff';
@@ -94,7 +95,7 @@ class AdminHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (role?.churchWide ?? false)
+                if (role?.superAdmin ?? false)
                   _HubTile(
                     icon: Icons.badge_outlined,
                     title: 'Staff',
@@ -533,7 +534,7 @@ class _SignupsScreenState extends State<SignupsScreen> {
   }
 }
 
-/// HQ admins add and remove staff here.
+/// Super admins add, change and remove staff here.
 class StaffScreen extends StatefulWidget {
   const StaffScreen({super.key});
 
@@ -546,6 +547,9 @@ class _StaffScreenState extends State<StaffScreen> {
   String? error;
   final email = TextEditingController();
   String? branchId;
+
+  /// Only offered with every branch: super admins are church-wide.
+  bool superAdmin = false;
   String? emailError;
   bool busy = false;
 
@@ -583,10 +587,19 @@ class _StaffScreenState extends State<StaffScreen> {
     if (!valid) return;
     final admin = CccScope.of(context).staff.source!;
     setState(() => busy = true);
+    final makeSuperAdmin = superAdmin && branchId == null;
     try {
-      await admin.addStaff(address, branchId);
+      await admin.addStaff(address, branchId, superAdmin: makeSuperAdmin);
       email.clear();
-      if (mounted) showCccMessage(context, '$address can now post.');
+      if (mounted) {
+        setState(() => superAdmin = false);
+        showCccMessage(
+          context,
+          makeSuperAdmin
+              ? '$address can now post and manage staff.'
+              : '$address can now post.',
+        );
+      }
       await _load();
     } on ChurchDataException catch (e) {
       if (mounted) showCccMessage(context, e.message);
@@ -643,7 +656,8 @@ class _StaffScreenState extends State<StaffScreen> {
                       capitalization: TextCapitalization.none,
                       helper:
                           'They need a CCC account with this email, and must '
-                          'have confirmed it.',
+                          'have confirmed it. Adding someone already on the '
+                          'list changes their access.',
                     ),
                     ListenableBuilder(
                       listenable: state.sermons,
@@ -656,6 +670,14 @@ class _StaffScreenState extends State<StaffScreen> {
                         onChanged: (value) => setState(() => branchId = value),
                       ),
                     ),
+                    if (branchId == null)
+                      SwitchRow(
+                        title: 'Super admin',
+                        subtitle: 'Can also add, change and remove staff.',
+                        value: superAdmin,
+                        onChanged: (value) =>
+                            setState(() => superAdmin = value),
+                      ),
                     CccButton(
                       label: 'Add staff',
                       isLoading: busy,
@@ -686,7 +708,9 @@ class _StaffScreenState extends State<StaffScreen> {
                               ),
                             ),
                             subtitle: Text(
-                              member.branchId == null
+                              member.superAdmin
+                                  ? 'Super admin, every branch'
+                                  : member.branchId == null
                                   ? 'HQ admin, every branch'
                                   : '${member.branchName ?? 'Branch'} staff',
                               style: TextStyle(

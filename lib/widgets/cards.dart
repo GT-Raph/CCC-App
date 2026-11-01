@@ -742,14 +742,14 @@ class LiveNowCard extends StatelessWidget {
 class MinistryCard extends StatelessWidget {
   const MinistryCard({
     required this.ministry,
-    required this.joined,
+    required this.standing,
     required this.onOpen,
     required this.onJoin,
     super.key,
   });
 
   final Ministry ministry;
-  final bool joined;
+  final MinistryStanding standing;
   final VoidCallback onOpen;
   final VoidCallback onJoin;
 
@@ -816,7 +816,8 @@ class MinistryCard extends StatelessWidget {
                 ] else
                   const Spacer(),
                 JoinChip(
-                  joined: joined,
+                  standing: standing,
+                  asksFirst: ministry.needsApproval,
                   ministryName: ministry.name,
                   onTap: onJoin,
                 ),
@@ -829,19 +830,25 @@ class MinistryCard extends StatelessWidget {
   }
 }
 
-/// A small gold "Join" button. Once joined it turns into a quiet "Joined"
-/// with a check; tapping it again leaves the ministry.
+/// A small gold "Join" button ("Ask to join" for a ministry that approves
+/// its members). Once joined it turns into a quiet "Joined" with a check, or
+/// "Requested" while a request waits; tapping it again leaves the ministry
+/// or withdraws the request.
 class JoinChip extends StatefulWidget {
   const JoinChip({
-    required this.joined,
+    required this.standing,
     required this.ministryName,
     required this.onTap,
+    this.asksFirst = false,
     super.key,
   });
 
-  final bool joined;
+  final MinistryStanding standing;
   final String ministryName;
   final VoidCallback onTap;
+
+  /// The ministry approves its members: "Ask to join", then "Requested".
+  final bool asksFirst;
 
   @override
   State<JoinChip> createState() => _JoinChipState();
@@ -857,20 +864,30 @@ class _JoinChipState extends State<JoinChip> {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final joined = widget.joined;
+    final name = widget.ministryName;
+    final (label, icon, spokenLabel) = switch (widget.standing) {
+      MinistryStanding.joined => ('Joined', Icons.check_rounded, 'Joined $name'),
+      MinistryStanding.asked => (
+        'Requested',
+        Icons.schedule,
+        'Requested to join $name',
+      ),
+      _ when widget.asksFirst => ('Ask to join', null, 'Ask to join $name'),
+      _ => ('Join', null, 'Join $name'),
+    };
+    // Joined and Requested are quiet; the actions are gold.
+    final quiet = icon != null;
     final style = TextStyle(
       fontSize: 14,
       fontWeight: FontWeight.w700,
       height: 1,
-      color: joined ? p.text : CccColors.onPrimary,
+      color: quiet ? p.text : CccColors.onPrimary,
     );
     // Its own node, so screen readers can reach it apart from the card.
     return Semantics(
       container: true,
       button: true,
-      label: joined
-          ? 'Joined ${widget.ministryName}'
-          : 'Join ${widget.ministryName}',
+      label: spokenLabel,
       onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
@@ -894,10 +911,10 @@ class _JoinChipState extends State<JoinChip> {
                 height: 34,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 decoration: BoxDecoration(
-                  color: joined ? p.surface : CccColors.primary,
+                  color: quiet ? p.surface : CccColors.primary,
                   borderRadius: BorderRadius.circular(17),
                   border: Border.all(
-                    color: joined ? p.lineStrong : CccColors.primary,
+                    color: quiet ? p.lineStrong : CccColors.primary,
                   ),
                 ),
                 child: AnimatedSwitcher(
@@ -912,25 +929,21 @@ class _JoinChipState extends State<JoinChip> {
                     ),
                   ),
                   child: Center(
-                    key: ValueKey(joined),
+                    key: ValueKey(label),
                     widthFactor: 1,
                     // Shrinks rather than overflowing with large text sizes.
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: joined
-                          ? Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check_rounded,
-                                  size: 16,
-                                  color: p.accentText,
-                                ),
-                                const SizedBox(width: 4),
-                                Text('Joined', style: style),
-                              ],
-                            )
-                          : Text('Join', style: style),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (icon != null) ...[
+                            Icon(icon, size: 16, color: p.accentText),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(label, style: style),
+                        ],
+                      ),
                     ),
                   ),
                 ),

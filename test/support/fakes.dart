@@ -6,6 +6,7 @@ import 'package:ccc_app/models/admin_drafts.dart';
 import 'package:ccc_app/models/church_branch.dart';
 import 'package:ccc_app/models/event.dart';
 import 'package:ccc_app/models/live_stream.dart';
+import 'package:ccc_app/models/member_details.dart';
 import 'package:ccc_app/models/ministry.dart';
 import 'package:ccc_app/models/news.dart';
 import 'package:ccc_app/models/sermon.dart';
@@ -374,11 +375,56 @@ class FakeMinistries implements MinistrySource {
     this.results = testMinistries,
     Set<String>? joinedIds,
     this.failWrites = false,
+    this.details = MemberDetails.skipped,
+    this.matches = const [],
   }) : joinedIds = joinedIds ?? {};
 
   final List<Ministry> Function(String? branchId) results;
   final Set<String> joinedIds;
   bool failWrites;
+
+  /// Null until the member has been asked. By default they were asked and
+  /// skipped, so screens open straight to Home.
+  MemberDetails? details;
+  final savedDetails = <MemberDetails>[];
+
+  /// What matching joins the member to, each time it runs.
+  List<String> matches;
+  int matchCalls = 0;
+
+  /// The member's requests to join ministries that approve their members.
+  final requestStates = <String, RequestState>{};
+
+  @override
+  Future<Map<String, RequestState>> requests() async => {...requestStates};
+
+  @override
+  Future<void> requestToJoin(String ministryId) async {
+    if (failWrites) throw const ChurchDataException('Offline');
+    requestStates[ministryId] = RequestState.pending;
+  }
+
+  @override
+  Future<void> withdrawRequest(String ministryId) async {
+    if (failWrites) throw const ChurchDataException('Offline');
+    requestStates.remove(ministryId);
+  }
+
+  @override
+  Future<MemberDetails?> myDetails() async => details;
+
+  @override
+  Future<void> saveDetails(MemberDetails value) async {
+    if (failWrites) throw const ChurchDataException('Offline');
+    savedDetails.add(value);
+    details = value;
+  }
+
+  @override
+  Future<List<String>> matchMinistries() async {
+    matchCalls++;
+    return matches;
+  }
 
   @override
   Future<List<Ministry>> list({String? branchId}) async => results(branchId);
@@ -414,7 +460,7 @@ class FakeAdmin implements AdminSource {
   final uploads = <String>[];
   final removed = <String>[];
   final staffList = <StaffMember>[];
-  final added = <({String email, String? branchId})>[];
+  final added = <({String email, String? branchId, bool superAdmin})>[];
   List<Signup> signupList = [];
 
   @override
@@ -472,14 +518,73 @@ class FakeAdmin implements AdminSource {
   Future<List<StaffMember>> staff() async => [...staffList];
 
   @override
-  Future<void> addStaff(String email, String? branchId) async {
-    added.add((email: email, branchId: branchId));
-    staffList.add(StaffMember(email: email, branchId: branchId));
+  Future<void> addStaff(
+    String email,
+    String? branchId, {
+    bool superAdmin = false,
+  }) async {
+    added.add((email: email, branchId: branchId, superAdmin: superAdmin));
+    staffList
+      ..removeWhere((member) => member.email == email)
+      ..add(
+        StaffMember(email: email, branchId: branchId, superAdmin: superAdmin),
+      );
   }
 
   @override
   Future<void> removeStaff(String email) async =>
       staffList.removeWhere((member) => member.email == email);
+
+  final leadersByMinistry = <String, List<String>>{};
+
+  /// Ministries the signed-in member answers requests for, and the requests.
+  List<ApprovalMinistry> approvals = [];
+  final requestsByMinistry = <String, List<JoinRequest>>{};
+  final answered = <({String ministryId, String memberId, bool approve})>[];
+
+  @override
+  Future<List<String>> leaders(String ministryId) async => [
+    ...?leadersByMinistry[ministryId],
+  ];
+
+  @override
+  Future<void> addLeader(String ministryId, String email) async =>
+      (leadersByMinistry[ministryId] ??= []).add(email);
+
+  @override
+  Future<void> removeLeader(String ministryId, String email) async =>
+      leadersByMinistry[ministryId]?.remove(email);
+
+  @override
+  Future<List<ApprovalMinistry>> ministriesToApprove() async => [
+    for (final ministry in approvals)
+      ApprovalMinistry(
+        id: ministry.id,
+        name: ministry.name,
+        waiting: requestsByMinistry[ministry.id]?.length ?? 0,
+      ),
+  ];
+
+  @override
+  Future<List<JoinRequest>> joinRequests(String ministryId) async => [
+    ...?requestsByMinistry[ministryId],
+  ];
+
+  @override
+  Future<void> answerRequest(
+    String ministryId,
+    String memberId, {
+    required bool approve,
+  }) async {
+    answered.add((
+      ministryId: ministryId,
+      memberId: memberId,
+      approve: approve,
+    ));
+    requestsByMinistry[ministryId]?.removeWhere(
+      (request) => request.memberId == memberId,
+    );
+  }
 }
 
 // The app wired to fakes -----------------------------------------------------

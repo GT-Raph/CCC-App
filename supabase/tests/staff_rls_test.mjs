@@ -1,53 +1,12 @@
 // Runs supabase/schema.sql + staff.sql in PGlite (real Postgres in WASM) with
 // stand-ins for Supabase's auth/storage schemas, then checks what each kind
 // of account may do. See README.md in this folder.
-import { PGlite } from '@electric-sql/pglite';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { actAs, readSql, supabaseDb } from './supabase_stub.mjs';
 
-const project = fileURLToPath(new URL('../..', import.meta.url));
-const db = new PGlite();
-
-// --- Supabase stand-ins -------------------------------------------------------
-await db.exec(`
-  create role anon nologin;
-  create role authenticated nologin;
-  create schema auth;
-  create table auth.users (
-    id uuid primary key,
-    email text,
-    email_confirmed_at timestamptz,
-    raw_user_meta_data jsonb default '{}'::jsonb
-  );
-  create function auth.uid() returns uuid language sql stable as $$
-    select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
-  $$;
-  grant usage on schema auth to anon, authenticated;
-  grant execute on function auth.uid() to anon, authenticated;
-  create schema storage;
-  create table storage.buckets (
-    id text primary key, name text, public boolean,
-    file_size_limit bigint, allowed_mime_types text[]
-  );
-  create table storage.objects (
-    id uuid primary key default gen_random_uuid(),
-    bucket_id text references storage.buckets(id),
-    name text
-  );
-  alter table storage.objects enable row level security;
-  grant usage on schema storage to anon, authenticated;
-  grant select, insert, update, delete on storage.objects to authenticated;
-  create publication supabase_realtime;
-  grant usage on schema public to anon, authenticated;
-`);
-
-const read = (name) => readFileSync(join(project, 'supabase', name), 'utf8');
-await db.exec(read('schema.sql'));
-await db.exec(read('staff.sql'));
+const db = await supabaseDb('schema.sql', 'staff.sql');
 // Running twice must be safe.
-await db.exec(read('staff.sql'));
+await db.exec(readSql('staff.sql'));
 
 // --- Test data (as the database owner) ---------------------------------------
 const ids = {
@@ -55,6 +14,7 @@ const ids = {
   botweStaff: '00000000-0000-0000-0000-00000000000b',
   unconfirmed: '00000000-0000-0000-0000-00000000000c',
   member: '00000000-0000-0000-0000-00000000000d',
+  hq: '00000000-0000-0000-0000-00000000000e',
 };
 const botwe = '10000000-0000-0000-0000-000000000001';
 const westland = '10000000-0000-0000-0000-000000000002';
@@ -65,11 +25,13 @@ await db.exec(`
     ('${ids.admin}', 'Admin@Church.org', now(), '{"full_name":"Grace Admin"}'),
     ('${ids.botweStaff}', 'media@botwe.org', now(), '{"full_name":"Kofi Media","branch_id":"${botwe}"}'),
     ('${ids.unconfirmed}', 'new@botwe.org', null, '{}'),
-    ('${ids.member}', 'ama@example.org', now(), '{"full_name":"Ama Owusu","branch_id":"${botwe}"}');
-  insert into public.staff (email, branch_id) values
-    ('admin@church.org', null),
-    ('media@botwe.org', '${botwe}'),
-    ('new@botwe.org', '${botwe}');
+    ('${ids.member}', 'ama@example.org', now(), '{"full_name":"Ama Owusu","branch_id":"${botwe}"}'),
+    ('${ids.hq}', 'hq@church.org', now(), '{"full_name":"Esi Mensah"}');
+  insert into public.staff (email, branch_id, added_at) values
+    ('admin@church.org', null, '2026-01-01'),
+    ('hq@church.org', null, '2026-02-01'),
+    ('media@botwe.org', '${botwe}', '2026-03-01'),
+    ('new@botwe.org', '${botwe}', '2026-03-01');
   insert into public.news (id, title, branch_id) values
     ('20000000-0000-0000-0000-000000000001', 'Westland news', '${westland}');
   insert into public.ministries (id, name, branch_id) values
@@ -79,25 +41,10 @@ await db.exec(`
     ('30000000-0000-0000-0000-000000000001', '${ids.member}'),
     ('30000000-0000-0000-0000-000000000002', '${ids.member}');
 `);
+// The staff above predate super admins; running staff.sql again upgrades them.
+await db.exec(readSql('staff.sql'));
 
-// Runs SQL as a signed-in user (or anon) inside a transaction that is rolled
-// back, returning rows or the error message.
-async function as(who, sql) {
-  await db.exec('begin');
-  try {
-    if (who === 'anon') {
-      await db.exec(`set local role anon; select set_config('request.jwt.claim.sub', '', true);`);
-    } else {
-      await db.exec(`set local role authenticated; select set_config('request.jwt.claim.sub', '${ids[who]}', true);`);
-    }
-    const result = await db.query(sql);
-    return { rows: result.rows, affected: result.affectedRows };
-  } catch (error) {
-    return { error: error.message };
-  } finally {
-    await db.exec('rollback');
-  }
-}
+const as = actAs(db, ids);
 
 const ok = (r, label) => assert.ok(!r.error, `${label}: expected success, got ${r.error}`);
 const denied = (r, label) =>
@@ -111,6 +58,27 @@ const check = async (label, fn) => {
 
 const news = (branch) =>
   `insert into public.news (title, branch_id) values ('Hello', ${branch ? `'${branch}'` : 'null'})`;
+
+await check('an older database makes its first HQ admin the super admin', async () => {
+  const admins = await db.query(
+    `select email, super_admin from public.staff where branch_id is null order by email`);
+  assert.deepEqual(admins.rows, [
+    { email: 'admin@church.org', super_admin: true },
+    { email: 'hq@church.org', super_admin: false },
+  ]);
+});
+
+await check('the app can tell super admins from HQ admins', async () => {
+  const admin = await as('admin', 'select * from public.staff_role()');
+  assert.deepEqual(admin.rows, [{ branch_id: null, super_admin: true }]);
+  const hq = await as('hq', 'select * from public.staff_role()');
+  assert.deepEqual(hq.rows, [{ branch_id: null, super_admin: false }]);
+  // App versions from before super admins still read staff_scope.
+  const scope = await as('hq', 'select * from public.staff_scope()');
+  assert.deepEqual(scope.rows, [{ branch_id: null }]);
+  const member = await as('member', 'select * from public.staff_role()');
+  assert.equal(member.rows.length, 0);
+});
 
 await check('church-wide admin can post church-wide and any-branch news', async () => {
   ok(await as('admin', news(null)), 'admin church-wide');
@@ -208,15 +176,49 @@ await check('ministries: church-wide only for admins, branch for its staff', asy
   ok(await add('admin', null), 'church-wide ministry by admin');
 });
 
-await check('only church-wide admins manage staff', async () => {
+await check('HQ admins who are not super admins still post church-wide', async () => {
+  ok(await as('hq', news(null)), 'hq church-wide');
+  ok(await as('hq', news(westland)), 'hq westland');
+});
+
+await check('only super admins manage staff', async () => {
   denied(await as('botweStaff', `insert into public.staff (email, branch_id) values ('x@y.org', '${botwe}')`), 'branch staff adds staff');
   denied(await as('member', `insert into public.staff (email) values ('me@example.org')`), 'member makes self admin');
   denied(await as('botweStaff', `update public.staff set branch_id = null where email = 'media@botwe.org'`), 'branch staff promotes self');
-  ok(await as('admin', `insert into public.staff (email, branch_id) values ('choir@westland.org', '${westland}')`), 'admin adds staff');
+  denied(await as('hq', `insert into public.staff (email, branch_id) values ('x@westland.org', '${westland}')`), 'HQ admin adds staff');
+  denied(await as('hq', `update public.staff set super_admin = true where email = 'hq@church.org'`), 'HQ admin makes self super admin');
+  denied(await as('hq', `delete from public.staff where email = 'media@botwe.org'`), 'HQ admin removes staff');
+  ok(await as('admin', `insert into public.staff (email, branch_id) values ('choir@westland.org', '${westland}')`), 'super admin adds staff');
+  ok(await as('admin', `update public.staff set super_admin = true where email = 'hq@church.org'`), 'super admin appoints another');
   const list = await as('admin', `select email from public.staff order by email`);
-  assert.equal(list.rows.length, 3);
-  const hidden = await as('member', `select email from public.staff`);
-  assert.equal(hidden.rows.length, 0);
+  assert.equal(list.rows.length, 4);
+  assert.equal((await as('hq', `select email from public.staff`)).rows.length, 0);
+  assert.equal((await as('member', `select email from public.staff`)).rows.length, 0);
+});
+
+await check('the church always keeps a super admin', async () => {
+  const lastOne = /at least one super admin/;
+  assert.match((await as('admin', `delete from public.staff where email = 'admin@church.org'`)).error ?? '', lastOne);
+  assert.match(
+    (await as('admin', `update public.staff set super_admin = false where email = 'admin@church.org'`)).error ?? '',
+    lastOne,
+  );
+  // Not even from the dashboard.
+  assert.match((await as('owner', `delete from public.staff where email = 'admin@church.org'`)).error ?? '', lastOne);
+  // Once someone else is a super admin, the first can step down.
+  ok(await as('admin', [
+    `update public.staff set super_admin = true where email = 'hq@church.org'`,
+    `delete from public.staff where email = 'admin@church.org'`,
+  ]), 'hand over to another super admin');
+  // Removing branch staff is unaffected.
+  ok(await as('admin', `delete from public.staff where email = 'media@botwe.org'`), 'remove branch staff');
+});
+
+await check('super admins are always church-wide', async () => {
+  denied(
+    await as('admin', `insert into public.staff (email, branch_id, super_admin) values ('x@botwe.org', '${botwe}', true)`),
+    'branch super admin',
+  );
 });
 
 await check('staff emails must be lower case', async () => {

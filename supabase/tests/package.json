@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node staff_rls_test.mjs"
+    "test": "node staff_rls_test.mjs && node ministry_matching_test.mjs && node ministry_approval_test.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.6"
