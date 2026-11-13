@@ -706,9 +706,11 @@ class _SermonEditorState extends State<SermonEditor>
 
 /// Adds or edits a ministry.
 class MinistryEditor extends StatefulWidget {
-  const MinistryEditor({this.id, super.key});
+  const MinistryEditor({this.id, this.rulesOnly = false, super.key})
+    : assert(!rulesOnly || id != null);
 
   final String? id;
+  final bool rulesOnly;
 
   @override
   State<MinistryEditor> createState() => _MinistryEditorState();
@@ -750,6 +752,7 @@ class _MinistryEditorState extends State<MinistryEditor>
   final leaderEmail = TextEditingController();
   String? leaderError;
   bool leaderBusy = false;
+  bool _rulesLoaded = false;
 
   @override
   void fill(Map<String, dynamic>? row) {
@@ -758,6 +761,12 @@ class _MinistryEditorState extends State<MinistryEditor>
       return;
     }
     final draft = MinistryDraft.fromRow(row);
+    if (widget.rulesOnly &&
+        !app.staff.canSetMinistryRules(draft.id!, draft.branchId)) {
+      loadError = "You don't have permission to change these requirements.";
+      return;
+    }
+    _rulesLoaded = true;
     addsMembers = draft.addsMembers;
     minAge.text = draft.minAge?.toString() ?? '';
     maxAge.text = draft.maxAge?.toString() ?? '';
@@ -765,7 +774,7 @@ class _MinistryEditorState extends State<MinistryEditor>
     forMaritalStatuses = draft.forMaritalStatuses;
     forStudents = draft.forStudents;
     needsApproval = draft.needsApproval;
-    unawaited(_loadLeaders(row['id'] as String));
+    if (!widget.rulesOnly) unawaited(_loadLeaders(row['id'] as String));
     name.text = draft.name;
     focus.text = draft.focus;
     about.text = draft.about;
@@ -846,25 +855,26 @@ class _MinistryEditorState extends State<MinistryEditor>
     }
   }
 
-  /// The ministry's leaders, who answer its requests to join.
+  /// Leaders set requirements and answer requests; only staff choose them.
   Widget _leaders() {
     final p = context.palette;
     final muted = TextStyle(fontSize: 13.5, height: 1.45, color: p.textMuted);
     if (editingId == null) {
-      return Text('Save the ministry, then add its leaders here.', style: muted);
+      return Text(
+        'Save the ministry, then add its leaders here.',
+        style: muted,
+      );
     }
     final leaders = this.leaders;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const FieldLabel('Leaders'),
-        const SizedBox(height: 8),
         if (leaders == null)
           Text('Loading leaders…', style: muted)
         else if (leaders.isEmpty)
           Text(
-            'No leaders yet. Until you add some, staff who manage this '
-            'ministry answer its requests.',
+            'No leaders yet. Staff who manage this ministry set its '
+            'requirements and answer any requests.',
             style: muted,
           )
         else
@@ -900,8 +910,8 @@ class _MinistryEditorState extends State<MinistryEditor>
           keyboardType: TextInputType.emailAddress,
           capitalization: TextCapitalization.none,
           helper:
-              'They need a CCC account with this email. Leaders answer '
-              'requests to join this ministry and nothing else.',
+              'They need a CCC account with this email. Leaders set '
+              'membership requirements and answer requests for this ministry.',
         ),
         const SizedBox(height: 12),
         CccButton(
@@ -917,6 +927,8 @@ class _MinistryEditorState extends State<MinistryEditor>
   }
 
   void _save() {
+    if (busy || loading || loadError != null) return;
+    if (widget.rulesOnly && !_rulesLoaded) return;
     final from = _age(minAge), to = _age(maxAge);
     // Switching it off clears the rules, so none linger unseen.
     final rules = MinistryDraft(
@@ -926,10 +938,13 @@ class _MinistryEditorState extends State<MinistryEditor>
       forGender: addsMembers ? forGender : null,
       forMaritalStatuses: addsMembers ? forMaritalStatuses : {},
       forStudents: addsMembers ? forStudents : null,
+      needsApproval: needsApproval,
     );
     final (minimum, maximum) = (from.age, to.age);
     setState(() {
-      nameError = name.text.trim().isEmpty ? 'Give the ministry a name.' : null;
+      nameError = !widget.rulesOnly && name.text.trim().isEmpty
+          ? 'Give the ministry a name.'
+          : null;
       ageError =
           addsMembers &&
               (!from.valid ||
@@ -945,6 +960,12 @@ class _MinistryEditorState extends State<MinistryEditor>
     final kept = {for (final photo in photos) ?photo.path};
     commit(
       () async {
+        if (widget.rulesOnly) {
+          final staff = app.staff;
+          await admin.saveMinistryRules(editingId!, rules);
+          await staff.refreshApprovals();
+          return;
+        }
         final draft = MinistryDraft(
           branchId: lockedBranch ?? branchId,
           name: name.text,
@@ -979,91 +1000,98 @@ class _MinistryEditorState extends State<MinistryEditor>
   Widget build(BuildContext context) {
     final id = editingId;
     return AdminFormScaffold(
-      title: id == null ? 'New ministry' : 'Edit ministry',
+      title: widget.rulesOnly
+          ? 'Membership requirements'
+          : id == null
+          ? 'New ministry'
+          : 'Edit ministry',
       busy: busy,
       busyLabel: 'Saving…',
       dirty: dirty,
       saveLabel: id == null ? 'Add ministry' : 'Save changes',
       onSave: _save,
-      onDelete: id == null || loadError != null
+      onDelete: widget.rulesOnly || id == null || loadError != null
           ? null
           : () => remove(name: name.text, files: savedPaths),
       deleteLabel: 'Delete ministry',
       children: body(
         () => [
-          if (id != null) ...[
-            CccButton(
-              label: 'See who has joined',
-              variant: CccButtonVariant.outlined,
-              height: 48,
-              fontSize: 16,
-              iconGap: 10,
-              icon: const Icon(Icons.people_outline, size: 22),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      SignupsScreen(ministryId: id, ministryName: name.text),
+          if (widget.rulesOnly) SectionTitle(name.text),
+          if (!widget.rulesOnly) ...[
+            if (id != null) ...[
+              CccButton(
+                label: 'See who has joined',
+                variant: CccButtonVariant.outlined,
+                height: 48,
+                fontSize: 16,
+                iconGap: 10,
+                icon: const Icon(Icons.people_outline, size: 22),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        SignupsScreen(ministryId: id, ministryName: name.text),
+                  ),
                 ),
               ),
+              const SizedBox(height: 16),
+            ],
+            FormSection(
+              title: 'Ministry',
+              children: [
+                LabeledField(
+                  label: 'Name',
+                  required: true,
+                  controller: name,
+                  error: nameError,
+                  capitalization: TextCapitalization.words,
+                  onChanged: _changed,
+                ),
+                LabeledField(
+                  label: "Who it's for",
+                  controller: focus,
+                  hint: "e.g. Women's fellowship, Ages 18 to 35",
+                  onChanged: _changed,
+                ),
+                LabeledField(
+                  label: 'About',
+                  controller: about,
+                  lines: 4,
+                  onChanged: _changed,
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-          ],
-          FormSection(
-            title: 'Ministry',
-            children: [
-              LabeledField(
-                label: 'Name',
-                required: true,
-                controller: name,
-                error: nameError,
-                capitalization: TextCapitalization.words,
-                onChanged: _changed,
-              ),
-              LabeledField(
-                label: "Who it's for",
-                controller: focus,
-                hint: "e.g. Women's fellowship, Ages 18 to 35",
-                onChanged: _changed,
-              ),
-              LabeledField(
-                label: 'About',
-                controller: about,
-                lines: 4,
-                onChanged: _changed,
-              ),
-            ],
-          ),
-          FormSection(
-            title: 'Meetings',
-            children: [
-              LabeledField(
-                label: 'When it meets',
-                controller: meets,
-                hint: 'e.g. Saturdays, 4:00 PM',
-                onChanged: _changed,
-              ),
-              LabeledField(
-                label: 'Venue',
-                controller: venue,
-                capitalization: TextCapitalization.words,
-                onChanged: _changed,
-              ),
-              ListenableBuilder(
-                listenable: app.sermons,
-                builder: (context, _) => BranchChooser(
-                  label: 'Branch',
-                  branches: branches,
-                  value: branchId,
-                  lockedTo: lockedBranch,
-                  allBranchesLabel: 'Church-wide',
-                  onChanged: (value) => setState(() {
-                    branchId = value;
-                    dirty = true;
-                  }),
+            FormSection(
+              title: 'Meetings',
+              children: [
+                LabeledField(
+                  label: 'When it meets',
+                  controller: meets,
+                  hint: 'e.g. Saturdays, 4:00 PM',
+                  onChanged: _changed,
                 ),
-              ),
-            ],
-          ),
+                LabeledField(
+                  label: 'Venue',
+                  controller: venue,
+                  capitalization: TextCapitalization.words,
+                  onChanged: _changed,
+                ),
+                ListenableBuilder(
+                  listenable: app.sermons,
+                  builder: (context, _) => BranchChooser(
+                    label: 'Branch',
+                    branches: branches,
+                    value: branchId,
+                    lockedTo: lockedBranch,
+                    allBranchesLabel: 'Church-wide',
+                    onChanged: (value) => setState(() {
+                      branchId = value;
+                      dirty = true;
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ],
           FormSection(
             title: 'Joining',
             children: [
@@ -1079,7 +1107,6 @@ class _MinistryEditorState extends State<MinistryEditor>
                   dirty = true;
                 }),
               ),
-              if (needsApproval) _leaders(),
               SwitchRow(
                 title: 'Add members who qualify',
                 subtitle:
@@ -1171,39 +1198,42 @@ class _MinistryEditorState extends State<MinistryEditor>
               ],
             ],
           ),
-          FormSection(
-            title: 'Photos',
-            children: [
-              PhotoChooser(
-                photos: photos,
-                onChanged: (value) => setState(() {
-                  photos = value;
-                  dirty = true;
-                }),
-              ),
-            ],
-          ),
-          FormSection(
-            title: 'On the card',
-            children: [
-              LabeledField(
-                label: 'Members',
-                controller: members,
-                hint: 'e.g. 50+',
-                helper:
-                    'Shown as “50+ members”. Leave empty to hide. Use only a '
-                    'figure the ministry has confirmed.',
-                onChanged: _changed,
-              ),
-              LabeledField(
-                label: 'Order',
-                controller: order,
-                keyboardType: TextInputType.number,
-                helper: 'Lower numbers show first; ties go by name.',
-                onChanged: _changed,
-              ),
-            ],
-          ),
+          if (!widget.rulesOnly) ...[
+            FormSection(title: 'Leaders', children: [_leaders()]),
+            FormSection(
+              title: 'Photos',
+              children: [
+                PhotoChooser(
+                  photos: photos,
+                  onChanged: (value) => setState(() {
+                    photos = value;
+                    dirty = true;
+                  }),
+                ),
+              ],
+            ),
+            FormSection(
+              title: 'On the card',
+              children: [
+                LabeledField(
+                  label: 'Members',
+                  controller: members,
+                  hint: 'e.g. 50+',
+                  helper:
+                      'Shown as “50+ members”. Leave empty to hide. Use only a '
+                      'figure the ministry has confirmed.',
+                  onChanged: _changed,
+                ),
+                LabeledField(
+                  label: 'Order',
+                  controller: order,
+                  keyboardType: TextInputType.number,
+                  helper: 'Lower numbers show first; ties go by name.',
+                  onChanged: _changed,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

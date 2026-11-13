@@ -10,6 +10,8 @@ import '../widgets/cards.dart';
 import '../widgets/ccc_widgets.dart';
 import '../widgets/details_scaffold.dart';
 import 'admin/admin_lists.dart';
+import 'admin/content_editor.dart';
+import 'admin/editors.dart';
 
 /// Joins or leaves [ministry] for a member, saved to their account; for a
 /// ministry that approves its members, asks to join or withdraws the
@@ -156,6 +158,40 @@ class MinistryDetailsScreen extends StatelessWidget {
               kind: ContentKind.ministries,
               id: ministry.id,
               branchId: ministry.branchId,
+            ),
+            ListenableBuilder(
+              listenable: CccScope.of(context).staff,
+              builder: (context, _) {
+                final staff = CccScope.of(context).staff;
+                if (!staff.canSetMinistryRules(
+                  ministry.id,
+                  ministry.branchId,
+                )) {
+                  return const SizedBox.shrink();
+                }
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: CccButton(
+                    label: 'Membership requirements',
+                    variant: CccButtonVariant.tonal,
+                    icon: const Icon(Icons.rule_outlined),
+                    onPressed: () async {
+                      final result = await Navigator.of(context)
+                          .push<EditorResult>(
+                            MaterialPageRoute(
+                              builder: (_) => MinistryEditor(
+                                id: ministry.id,
+                                rulesOnly: true,
+                              ),
+                            ),
+                          );
+                      if (result != null && context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                );
+              },
             ),
           ],
         );

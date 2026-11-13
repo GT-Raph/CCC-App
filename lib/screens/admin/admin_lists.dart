@@ -175,9 +175,11 @@ class _HubTile extends StatelessWidget {
 
 /// Everything of one kind the staff member manages, with New and Edit.
 class AdminListScreen extends StatefulWidget {
-  const AdminListScreen({required this.kind, super.key});
+  const AdminListScreen({required this.kind, this.rulesOnly = false, super.key})
+    : assert(!rulesOnly || kind == ContentKind.ministries);
 
   final ContentKind kind;
+  final bool rulesOnly;
 
   @override
   State<AdminListScreen> createState() => _AdminListScreenState();
@@ -197,18 +199,22 @@ class _AdminListScreenState extends State<AdminListScreen> {
     final state = CccScope.of(context);
     final admin = state.staff.source;
     final role = state.staff.role;
-    if (admin == null || role == null) return;
+    if (admin == null || (!widget.rulesOnly && role == null)) return;
     setState(() => error = null);
     try {
-      final found = await admin.rows(widget.kind);
+      final found = widget.rulesOnly
+          ? await admin.ministriesForRules()
+          : await admin.rows(widget.kind);
       if (!mounted) return;
       setState(() {
-        rows = [
-          for (final row in found)
-            if (role.canManage(row['branch_id'] as String?) &&
-                (row['for_all_branches'] != true || role.churchWide))
-              row,
-        ];
+        rows = widget.rulesOnly
+            ? found
+            : [
+                for (final row in found)
+                  if (role!.canManage(row['branch_id'] as String?) &&
+                      (row['for_all_branches'] != true || role.churchWide))
+                    row,
+              ];
       });
     } on ChurchDataException catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -216,7 +222,18 @@ class _AdminListScreenState extends State<AdminListScreen> {
   }
 
   Future<void> _open({String? id}) async {
-    final result = await openEditor(context, widget.kind, id: id);
+    if (widget.rulesOnly) {
+      // The list may include a ministry assigned since this account opened.
+      await CccScope.of(context).staff.refreshRuleMinistries();
+      if (!mounted) return;
+    }
+    final result = widget.rulesOnly
+        ? await Navigator.of(context).push<EditorResult>(
+            MaterialPageRoute(
+              builder: (_) => MinistryEditor(id: id!, rulesOnly: true),
+            ),
+          )
+        : await openEditor(context, widget.kind, id: id);
     if (result != null && mounted) await _load();
   }
 
@@ -226,24 +243,28 @@ class _AdminListScreenState extends State<AdminListScreen> {
     final rows = this.rows;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(bottom: bottom > 0 ? 0 : 8),
-        child: FloatingActionButton.extended(
-          onPressed: () => _open(),
-          backgroundColor: CccColors.primary,
-          foregroundColor: CccColors.onPrimary,
-          elevation: 2,
-          shape: const StadiumBorder(),
-          icon: const Icon(Icons.add),
-          label: Text(
-            'New ${kind.noun}',
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ),
+      floatingActionButton: widget.rulesOnly
+          ? null
+          : Padding(
+              padding: EdgeInsets.only(bottom: bottom > 0 ? 0 : 8),
+              child: FloatingActionButton.extended(
+                onPressed: () => _open(),
+                backgroundColor: CccColors.primary,
+                foregroundColor: CccColors.onPrimary,
+                elevation: 2,
+                shape: const StadiumBorder(),
+                icon: const Icon(Icons.add),
+                label: Text(
+                  'New ${kind.noun}',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
       body: Column(
         children: [
-          DetailsHeader(title: kind.title),
+          DetailsHeader(
+            title: widget.rulesOnly ? 'Membership requirements' : kind.title,
+          ),
           Expanded(
             child: RefreshIndicator(
               color: CccColors.primary,
@@ -257,7 +278,9 @@ class _AdminListScreenState extends State<AdminListScreen> {
                     const SkeletonList(label: 'Loading', count: 3)
                   else if (rows.isEmpty)
                     _Message(
-                      text: 'Nothing here yet. Add the first ${kind.noun}.',
+                      text: widget.rulesOnly
+                          ? 'No ministries to manage. Ask church staff to add you as a leader.'
+                          : 'Nothing here yet. Add the first ${kind.noun}.',
                     )
                   else
                     for (final row in rows) ...[

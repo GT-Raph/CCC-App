@@ -537,6 +537,18 @@ class FakeAdmin implements AdminSource {
 
   final leadersByMinistry = <String, List<String>>{};
 
+  List<Map<String, dynamic>> ruleMinistries = [];
+  final savedRules = <({String id, MinistryDraft rules})>[];
+
+  @override
+  Future<List<Map<String, dynamic>>> ministriesForRules() async =>
+      ruleMinistries;
+
+  @override
+  Future<void> saveMinistryRules(String ministryId, MinistryDraft rules) async {
+    savedRules.add((id: ministryId, rules: rules));
+  }
+
   /// Ministries the signed-in member answers requests for, and the requests.
   List<ApprovalMinistry> approvals = [];
   final requestsByMinistry = <String, List<JoinRequest>>{};

@@ -14,7 +14,8 @@ alter table public.ministries add constraint ministries_approval_or_automatic
 
 -- Leaders ---------------------------------------------------------------------
 -- One row per leader of a ministry, by the email they sign in with (lower
--- case). Leaders answer requests to join their ministry and nothing else;
+-- case). Leaders answer requests to join their ministry; ministry_rules.sql
+-- also lets them set its membership requirements. Only
 -- staff who manage the ministry choose them. The email must be confirmed
 -- before it counts.
 

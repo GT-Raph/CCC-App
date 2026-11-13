@@ -54,13 +54,19 @@ abstract interface class AdminSource {
 
   Future<void> removeStaff(String email);
 
-  /// The sign-in emails of [ministryId]'s leaders, who answer its requests
-  /// to join (supabase/ministry_approval.sql).
+  /// The sign-in emails of [ministryId]'s leaders, who set its requirements
+  /// and answer its requests to join.
   Future<List<String>> leaders(String ministryId);
 
   Future<void> addLeader(String ministryId, String email);
 
   Future<void> removeLeader(String ministryId, String email);
+
+  /// Ministries whose requirements the member may set, as leader or staff.
+  Future<List<Map<String, dynamic>>> ministriesForRules();
+
+  /// Saves only joining settings and matching rules, never other content.
+  Future<void> saveMinistryRules(String ministryId, MinistryDraft rules);
 
   /// The ministries whose requests to join the signed-in member answers, as
   /// a leader or as staff who manage them. Leaders needn't be staff.
@@ -296,6 +302,37 @@ class AdminService implements AdminSource {
           .delete()
           .eq('ministry_id', ministryId)
           .eq('email', email);
+      return const <Map<String, dynamic>>[];
+    }, saving: true);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> ministriesForRules() async {
+    if (_client.auth.currentUser == null) return const [];
+    return churchQuery('Membership requirements', () async {
+      final result = await _client.rpc<List<dynamic>>('ministries_for_rules');
+      return result.cast<Map<String, dynamic>>();
+    });
+  }
+
+  @override
+  Future<void> saveMinistryRules(String ministryId, MinistryDraft rules) async {
+    await churchQuery('Membership requirements', () async {
+      await _client.rpc(
+        'save_ministry_rules',
+        params: {
+          'target': ministryId,
+          'add_automatically': rules.addsMembers,
+          'minimum_age': rules.minAge,
+          'maximum_age': rules.maxAge,
+          'gender': rules.forGender?.name,
+          'marital_statuses': [
+            for (final status in rules.forMaritalStatuses) status.name,
+          ],
+          'students': rules.forStudents,
+          'require_approval': rules.needsApproval,
+        },
+      );
       return const <Map<String, dynamic>>[];
     }, saving: true);
   }

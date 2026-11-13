@@ -75,6 +75,11 @@ That is not a test of the deployed project.
   declines it; the member sees the answer; and a leader of one ministry sees
   nothing of another's requests.
 
+- Run `ministry_rules.sql` after `ministry_approval.sql`, then check with real
+  accounts that a confirmed leader can load and save existing requirements
+  for their own ministry (including automatic ministries), cannot save another
+  ministry's requirements or change its content, and loses access when removed.
+
 Automated tests use isolated fixtures in `test/` and mocked network/device
 services. They cannot verify deployed database policies, real push delivery,
 Google billing, app-store approval or church ownership of media.

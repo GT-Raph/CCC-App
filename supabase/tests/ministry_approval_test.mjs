@@ -9,6 +9,7 @@ const db = await supabaseDb(
   'staff.sql',
   'ministry_matching.sql',
   'ministry_approval.sql',
+  'ministry_rules.sql',
 );
 // Running twice must be safe.
 await db.exec(readSql('ministry_approval.sql'));
@@ -192,6 +193,108 @@ await check('a ministry approves its members or adds them automatically, not bot
 
 await check('ministries with requests and leaders can still be deleted', async () => {
   ok(await as('owner', `delete from public.ministries where id = '${choir}'`), 'delete Choir');
+});
+
+// Requirements are available independently of the approval queue.
+await db.exec(`
+  insert into public.ministry_leaders (ministry_id, email)
+  values ('${ushers}', 'choir@example.org');
+  update public.ministries set auto_assign = true, min_age = 25,
+    max_age = 35, for_gender = 'female', about = 'Existing description',
+    image_paths = array['existing.jpg'] where id = '${ushers}';
+  insert into public.member_details (user_id, birth_date, gender)
+  values ('${ids.ama}', (current_date - interval '22 years')::date, 'female');
+`);
+const saveRules = (target, {
+  automatic = true, min = 18, max = 35, gender = "'female'",
+  statuses = "'{}'::text[]", students = 'null', approval = false,
+} = {}) => `select public.save_ministry_rules('${target}', ${automatic},
+  ${min}, ${max}, ${gender}, ${statuses}, ${students}, ${approval})`;
+
+await check('installing and rerunning leader rules keeps existing ministries and requirements', async () => {
+  const before = (await db.query('select * from public.ministries order by id')).rows;
+  await db.exec(readSql('ministry_rules.sql'));
+  await db.exec(readSql('ministry_rules.sql'));
+  assert.deepEqual((await db.query('select * from public.ministries order by id')).rows, before);
+});
+
+await check('leaders find their ministries in every joining mode, with the correct branch', async () => {
+  const result = await as('leader', 'select * from public.ministries_for_rules()');
+  ok(result, 'rule ministries');
+  assert.deepEqual(result.rows.map(r => r.name), ['Choir', 'Ushers']);
+  assert.equal(result.rows[1].branches.name, 'CCC Botwe');
+  assert.equal((await as('admin', 'select * from public.ministries_for_rules()')).rows.length, 3);
+  for (const who of ['unconfirmedLeader', 'ama', 'westlandStaff']) {
+    assert.deepEqual((await as(who, 'select * from public.ministries_for_rules()')).rows, []);
+  }
+  denied(await as('anon', 'select * from public.ministries_for_rules()'), 'guest list');
+});
+
+await check('leaders add requirements to their ministry while preserving its other fields', async () => {
+  const result = await as('leader', [
+    saveRules(ushers, { statuses: "array['single', 'widowed']", students: true }),
+    `select * from public.ministries where id = '${ushers}'`,
+  ]);
+  ok(result, 'save own rules');
+  const row = result.rows[0];
+  assert.equal(row.min_age, 18);
+  assert.equal(row.max_age, 35);
+  assert.equal(row.for_gender, 'female');
+  assert.deepEqual(row.for_marital_statuses, ['single', 'widowed']);
+  assert.equal(row.for_students, true);
+  assert.equal(row.name, 'Ushers');
+  assert.equal(row.about, 'Existing description');
+  assert.deepEqual(row.image_paths, ['existing.jpg']);
+  assert.equal(row.branch_id, botwe);
+});
+
+await check('leader saves still run automatic matching without exposing member details', async () => {
+  const result = await as('leader', [
+    saveRules(ushers),
+    'select * from public.member_details',
+    'reset role',
+    `select added_automatically from public.ministry_members
+      where ministry_id = '${ushers}' and user_id = '${ids.ama}'`,
+  ]);
+  ok(result, 'match from leader save');
+  assert.deepEqual(result.all[1], []);
+  assert.equal(result.rows[0].added_automatically, true);
+});
+
+await check('only the assigned leader or responsible staff can save requirements', async () => {
+  ok(await as('botweStaff', saveRules(ushers)), 'own branch staff');
+  ok(await as('admin', saveRules(media)), 'church-wide staff');
+  for (const who of ['ama', 'kofi', 'unconfirmedLeader', 'westlandStaff', 'anon']) {
+    denied(await as(who, saveRules(ushers)), `${who} saves rules`);
+  }
+  denied(await as('leader', saveRules(media)), 'leader saves other ministry');
+  denied(await as('botweStaff', saveRules(media)), 'branch staff saves church-wide ministry');
+  const revoked = await as('owner', [
+    `delete from public.ministry_leaders where ministry_id = '${ushers}'`,
+    ...signedIn('leader'),
+    saveRules(ushers),
+  ]);
+  denied(revoked, 'removed leader');
+});
+
+await check('leaders cannot use direct writes to change content, branches, or leaders', async () => {
+  for (const assignment of ["name = 'Changed'", `branch_id = '${westland}'`, 'min_age = 1']) {
+    denied(await as('leader', `update public.ministries set ${assignment} where id = '${ushers}'`), assignment);
+  }
+  denied(await as('leader', `delete from public.ministries where id = '${ushers}'`), 'delete ministry');
+});
+
+await check('leader rules keep the same validation and mutually exclusive joining modes', async () => {
+  for (const invalid of [
+    { min: -1 }, { min: 36, max: 18 }, { max: 121 },
+    { gender: "'unknown'" }, { statuses: "array['unknown']" },
+    { min: 'null', max: 'null', gender: 'null' }, { approval: true },
+  ]) {
+    denied(await as('leader', saveRules(ushers, invalid)), JSON.stringify(invalid));
+  }
+  ok(await as('leader', saveRules(choir, {
+    automatic: false, min: 'null', max: 'null', gender: 'null', approval: true,
+  })), 'keep leader approval');
 });
 
 console.log(`\n${checks} checks passed`);

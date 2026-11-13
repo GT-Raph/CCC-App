@@ -197,9 +197,9 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   void _openJoinRequests() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const JoinRequestsScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const JoinRequestsScreen()));
   }
 
   /// Asks the member about themselves once, so they can be added to the
@@ -302,7 +302,7 @@ class _MainScreenState extends State<MainScreen> {
         final p = sheetContext.palette;
         return SafeArea(
           top: false,
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -375,11 +375,42 @@ class _MainScreenState extends State<MainScreen> {
                       child: _AccountRow(
                         icon: Icons.how_to_reg_outlined,
                         label: 'Join requests',
-                        value: waiting == 0 ? 'None waiting' : '$waiting waiting',
+                        value: waiting == 0
+                            ? 'None waiting'
+                            : '$waiting waiting',
                         action: 'Review',
                         onTap: () {
                           Navigator.pop(sheetContext);
                           _openJoinRequests();
+                        },
+                      ),
+                    );
+                  },
+                ),
+                ListenableBuilder(
+                  listenable: CccScope.of(context).staff,
+                  builder: (_, _) {
+                    final staff = CccScope.of(context).staff;
+                    if (staff.ruleMinistryIds.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: _AccountRow(
+                        icon: Icons.rule_outlined,
+                        label: 'Membership requirements',
+                        value: 'For ministries you lead or manage',
+                        action: 'Edit',
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const AdminListScreen(
+                                kind: ContentKind.ministries,
+                                rulesOnly: true,
+                              ),
+                            ),
+                          );
                         },
                       ),
                     );

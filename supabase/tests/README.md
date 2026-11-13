@@ -12,10 +12,14 @@ rules they meet (and only their branch's), that leaving is remembered, and
 that automatic memberships, and only those, go when a member stops
 qualifying.
 
-`ministry_approval_test.mjs` adds `../ministry_approval.sql` and checks that
+`ministry_approval_test.mjs` adds `../ministry_approval.sql` and
+`../ministry_rules.sql` and checks that
 members can't join a ministry that approves its members by themselves, that
 only its leaders and the staff who manage it see and answer its requests, and
-that only those staff choose its leaders.
+that only those staff choose its leaders. It also checks that confirmed
+leaders can set requirements only for their ministries, including automatic
+ministries; their saves run matching without exposing private details or
+granting content access; and rerunning the migration preserves existing rules.
 
 All three share the stand-ins in `supabase_stub.mjs`.
 

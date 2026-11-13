@@ -38,7 +38,9 @@ their storage buckets. Then run [staff.sql](supabase/staff.sql) so staff can
 post from the app, [ministry_matching.sql](supabase/ministry_matching.sql)
 so members are added to the ministries that are for them, and
 [ministry_approval.sql](supabase/ministry_approval.sql) so ministries such as
-Media or Choir approve their new members. Run them in that order, and again
+Media or Choir approve their new members, then
+[ministry_rules.sql](supabase/ministry_rules.sql) so ministry leaders can set
+membership requirements. Run them in that order, and again
 in that order after updating the app. These scripts add no example content.
 
 `branches.sql` contains Google listing IDs collected for the church. Church
@@ -155,12 +157,27 @@ In the dashboard, the rules are the `ministries` columns `auto_assign`,
 `for_students`; `ministry_members.added_automatically` marks automatic
 memberships.
 
+Staff can assign leaders by sign-in email in **Edit ministry → Leaders** for
+any ministry, including those that add members automatically. Leaders with a
+confirmed email can open **Account → Membership requirements**, choose their
+ministry, and use the same age, gender, marital-status and student-status rules.
+They can also open **Membership requirements** from that ministry's details.
+Existing requirements load into the form, so adding a rule keeps the other
+selections. The migration does not change any existing rules or memberships.
+The existing choice between automatic membership and leader approval remains.
+
+Leaders save only joining settings and requirements through a restricted
+database function. They cannot change ministry content or its branch, delete
+the ministry, assign other leaders, or read members' private matching details.
+Staff retain their existing access.
+
 ### Ministries that approve their members
 
 For ministries such as Media or Choir, staff switch on **Leader approves new
 members** in the ministry's form and add its leaders by the email they sign in
-with. Leaders needn't be staff: they answer requests to join that ministry and
-nothing else. Until a ministry has leaders, the staff who manage it answer.
+with. Leaders needn't be staff: they set that ministry's membership requirements
+and answer its requests to join. Until a ministry has leaders, the staff who
+manage it answer.
 A ministry that approves its members can't also add them automatically.
 
 Members tap **Ask to join** and see **Requested** until a leader answers; they
@@ -267,7 +284,8 @@ flutter build apk --debug
 
 The last test checks the staff permissions in `staff.sql`, the ministry
 matching in `ministry_matching.sql` and the approvals in
-`ministry_approval.sql` against a local PostgreSQL; see
+`ministry_approval.sql` and leader requirements in `ministry_rules.sql` against
+a local PostgreSQL; see
 [supabase/tests](supabase/tests/README.md).
 
 The app icons are generated from the church logo in `assets/launcher/`
