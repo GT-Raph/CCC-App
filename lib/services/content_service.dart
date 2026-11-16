@@ -66,7 +66,7 @@ class ContentService implements NewsSource, MinistrySource {
           .from('news')
           .select(
             'id, branch_id, title, subtitle, summary, body, image_paths, '
-            'branches(name)',
+            'published_at, branches(name)',
           )
           .lte('published_at', DateTime.now().toUtc().toIso8601String());
       return _forBranch(

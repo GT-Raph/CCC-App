@@ -8,9 +8,8 @@
 //     the event ends, and in the half hour before a scheduled stream,
 //   - every 2 minutes while the branch is live,
 //   - every 30 minutes otherwise.
-// Each check costs 2 of the YouTube Data API's 10,000 free daily units (the
-// channel's Live playlist, then the videos), so a few dozen branches fit
-// comfortably.
+// Handles add a channels.list call; playlist fallbacks add calls too.
+// Monitor quota for the number of branches and their checking frequency.
 //
 // Secrets: YOUTUBE_API_KEY and CRON_SECRET (required;
 // callers must send it in an x-cron-secret header). SUPABASE_URL and
@@ -21,7 +20,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const MINUTE = 60_000;
 const YOUTUBE = "https://www.googleapis.com/youtube/v3";
 
-type Branch = { id: string; youtube_channel_id: string };
+type Branch = {
+  id: string;
+  youtube_channel_id: string | null;
+  youtube_channel_handle: string | null;
+  youtube_channel_revision: number;
+};
 type EventRow = { branch_id: string; starts_at: string; ends_at: string | null };
 type Video = {
   id: string;
@@ -53,8 +57,8 @@ Deno.serve(async (request) => {
 
   const [branches, states, events] = await Promise.all([
     db.from("branches")
-      .select("id, youtube_channel_id")
-      .not("youtube_channel_id", "is", null),
+      .select("id, youtube_channel_id, youtube_channel_handle, youtube_channel_revision")
+      .or("youtube_channel_id.not.is.null,youtube_channel_handle.not.is.null"),
     db.from("live_streams").select("branch_id, next_check_at"),
     db.from("events")
       .select("branch_id, starts_at, ends_at")
@@ -77,7 +81,15 @@ Deno.serve(async (request) => {
   const problems = [];
   await Promise.all(due.map(async (branch) => {
     try {
-      const reading = await check(branch.youtube_channel_id, key);
+      let channelId = branch.youtube_channel_id;
+      if (branch.youtube_channel_handle) {
+        const body = await youtube("channels", {
+          part: "id", forHandle: branch.youtube_channel_handle,
+        }, key);
+        channelId = body.items?.[0]?.id;
+        if (!channelId) throw new Error("YouTube channel not found. Check the handle.");
+      }
+      const reading = await check(channelId ?? "", key);
       const details = reading.video?.liveStreamingDetails;
       readings.push({
         branch_id: branch.id,
@@ -102,16 +114,22 @@ Deno.serve(async (request) => {
     }
   }));
 
-  const options = { onConflict: "branch_id", defaultToNull: false };
-  for (const rows of [readings, problems]) {
-    if (rows.length === 0) continue;
-    const { error } = await db.from("live_streams").upsert(rows, options);
+  const recorded = new Set<string>();
+  for (const reading of [...readings, ...problems]) {
+    const branch = due.find((branch) => branch.id === reading.branch_id)!;
+    const { data, error } = await db.rpc("record_stream_reading", {
+      target: branch.id,
+      revision: branch.youtube_channel_revision,
+      reading,
+    });
     if (error) return json({ error: error.message }, 500);
+    if (data) recorded.add(branch.id);
   }
 
   return json({
     checked: due.length,
-    live: readings.filter((row) => row.status === "live").map((row) => row.branch_id),
+    live: readings.filter((row) => row.status === "live" && recorded.has(row.branch_id))
+      .map((row) => row.branch_id),
     problems,
   });
 });

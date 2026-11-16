@@ -7,6 +7,7 @@ class NewsItem {
     required this.summary,
     required this.body,
     required this.images,
+    required this.publishedAt,
     this.branchId,
   });
 
@@ -29,6 +30,7 @@ class NewsItem {
         for (final path in (row['image_paths'] as List?) ?? const [])
           imageUrl(path as String),
       ],
+      publishedAt: DateTime.parse(row['published_at'] as String).toLocal(),
     );
   }
 
@@ -49,6 +51,9 @@ class NewsItem {
 
   /// Https links to the photos (may be empty).
   final List<String> images;
+
+  /// When the story went public, in local time.
+  final DateTime publishedAt;
 
   bool matches(String query) {
     final q = query.trim().toLowerCase();

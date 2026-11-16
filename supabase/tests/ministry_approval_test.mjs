@@ -184,6 +184,18 @@ await check('staff who manage a ministry choose its leaders; leaders and members
   denied(await as('leader', `delete from public.ministry_leaders where ministry_id = '${choir}'`), 'leader removes leaders');
 });
 
+await check('super admins appoint leaders across branches and church-wide with insert-only access', async () => {
+  for (const ministry of [choir, media]) {
+    const insert = `insert into public.ministry_leaders (ministry_id, email)
+      values ('${ministry}', 'appointed@example.org')
+      on conflict (ministry_id, email) do nothing`;
+    const result = await as('admin', [insert, insert,
+      `select email from public.ministry_leaders where ministry_id='${ministry}' and email='appointed@example.org'`]);
+    ok(result, 'super admin appoints twice');
+    assert.deepEqual(result.rows, [{ email: 'appointed@example.org' }]);
+  }
+});
+
 await check('a ministry approves its members or adds them automatically, not both', async () => {
   denied(
     await as('admin', `update public.ministries set auto_assign = true, for_gender = 'female' where id = '${media}'`),

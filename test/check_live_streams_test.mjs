@@ -31,12 +31,15 @@ let upserts;
 let youtubeCalls;
 let env;
 let handler;
+let recordResult;
+let recordError;
+let channelsFound;
 
 function query(table) {
   const result = { data: tables[table], error: null };
   const builder = {
     select: () => builder,
-    not: () => builder,
+    or: () => builder,
     gte: () => builder,
     lte: () => builder,
     upsert: (rows, options) => {
@@ -77,7 +80,14 @@ const videos = {
 };
 
 before(async () => {
-  globalThis.__fakeSupabase = { createClient: () => ({ from: query }) };
+  globalThis.__fakeSupabase = { createClient: () => ({ from: query,
+    rpc: async (name, params) => {
+      assert.equal(name, 'record_stream_reading');
+      assert.equal(params.revision, 0);
+      upserts.push({ rows: [params.reading], target: params.target });
+      return { data: recordResult, error: recordError };
+    },
+  }) };
   globalThis.fetch = async (input) => {
     const url = new URL(input);
     const resource = url.pathname.split('/').pop();
@@ -85,6 +95,11 @@ before(async () => {
       `${resource} ${url.searchParams.get('playlistId') ?? url.searchParams.get('id')}`,
     );
     assert.equal(url.searchParams.get('key'), 'yt-key');
+    if (resource === 'channels') {
+      assert.equal(url.searchParams.get('part'), 'id');
+      assert.equal(url.searchParams.get('forHandle'), '@church');
+      return Response.json({ items: channelsFound ? [{ id: channel('a') }] : [] });
+    }
     if (resource === 'playlistItems') {
       const id = url.searchParams.get('playlistId');
       const letter = id.slice(-1);
@@ -113,6 +128,9 @@ beforeEach(() => {
   env = { YOUTUBE_API_KEY: 'yt-key', CRON_SECRET: 'cron-secret' };
   upserts = [];
   youtubeCalls = [];
+  recordResult = true;
+  recordError = null;
+  channelsFound = true;
   tables = {
     branches: [
       { id: 'live', youtube_channel_id: channel('a') },
@@ -131,6 +149,7 @@ beforeEach(() => {
       { branch_id: 'never-streamed', starts_at: iso(now + 10 * MINUTE), ends_at: null },
     ],
   };
+  for (const branch of tables.branches) branch.youtube_channel_revision = 0;
 });
 
 const call = (headers = { 'x-cron-secret': 'cron-secret' }, method = 'POST') =>
@@ -152,9 +171,9 @@ test('records live, upcoming and offline branches and when to look again', async
   const body = await response.json();
   assert.equal(response.status, 200, JSON.stringify(body));
 
-  const readings = Object.fromEntries(upserts[0].rows.map((r) => [r.branch_id, r]));
-  const problems = Object.fromEntries((upserts[1]?.rows ?? []).map((r) => [r.branch_id, r]));
-  assert.deepEqual(upserts[0].options, { onConflict: 'branch_id', defaultToNull: false });
+  const all = upserts.flatMap((write) => write.rows);
+  const readings = Object.fromEntries(all.filter((r) => !r.error).map((r) => [r.branch_id, r]));
+  const problems = Object.fromEntries(all.filter((r) => r.error).map((r) => [r.branch_id, r]));
 
   assert.equal(body.checked, 6, 'branches not yet due are skipped');
   assert.ok(!('not-due' in readings) && !('not-due' in problems));
@@ -181,4 +200,29 @@ test('records live, upcoming and offline branches and when to look again', async
   assert.equal(inMinutes(readings.later), 20, 'stream in 50 minutes: wake 30 minutes before');
   assert.equal(readings.stale.status, 'upcoming');
   assert.equal(inMinutes(readings.stale), 30, 'an old schedule: back to every 30 minutes');
+});
+
+test('resolves a handle on the server and discovers its public live stream', async () => {
+  tables.branches = [{ id: 'handle', youtube_channel_handle: '@church', youtube_channel_revision: 0 }];
+  const body = await (await call()).json();
+  assert.deepEqual(body.live, ['handle']);
+  assert.equal(upserts[0].rows[0].video_id, 'a-live');
+  assert.ok(youtubeCalls.some((call) => call.startsWith('channels')));
+});
+
+test('an unknown handle records an error instead of an offline success', async () => {
+  tables.branches = [{ id: 'handle', youtube_channel_handle: '@church', youtube_channel_revision: 0 }];
+  channelsFound = false;
+  const body = await (await call()).json();
+  assert.deepEqual(body.live, []);
+  assert.match(body.problems[0].error, /not found/);
+  assert.equal(upserts[0].rows[0].status, undefined);
+});
+
+test('discarded readings are not reported live and write failures are reported', async () => {
+  tables.branches = [tables.branches[0]];
+  recordResult = false;
+  assert.deepEqual((await (await call()).json()).live, []);
+  recordError = { message: 'database unavailable' };
+  assert.equal((await call()).status, 500);
 });

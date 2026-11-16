@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/admin_drafts.dart';
+import '../models/event.dart';
 import '../models/news.dart';
 import '../services/external_actions.dart';
 import '../theme/ccc_theme.dart';
@@ -45,6 +46,11 @@ class NewsDetailsScreen extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 12),
+        Text(
+          'Published ${dayLabel(item.publishedAt)}',
+          style: TextStyle(fontSize: 14, height: 1.4, color: p.textMuted),
+        ),
         const SizedBox(height: 18),
         Divider(color: p.line),
         const SizedBox(height: 18),

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/church_branch.dart';
+import 'church_query.dart';
 
 /// The signed-in member, as much as the screens need to know about them.
 class Member {
@@ -129,8 +130,43 @@ class AuthService {
     'branch_name': branch.name,
   };
 
+  /// The email's link opens the app (or, on the web, this site), which
+  /// then asks for a new password. The request and the link must be on the
+  /// same device.
   static Future<void> sendPasswordReset(String email) =>
-      _auth.resetPasswordForEmail(email);
+      _auth.resetPasswordForEmail(
+        email,
+        redirectTo: kIsWeb ? '${Uri.base.origin}/' : oauthRedirect,
+      );
+
+  /// Fires when a password reset link opens the app. Supabase has signed
+  /// the member in for it; they choose a new password next. Events from
+  /// before the call are replayed, so a link that launched the app counts.
+  static Stream<void> get passwordRecoveries => _auth.onAuthStateChange.where(
+    (state) => state.event == AuthChangeEvent.passwordRecovery,
+  );
+
+  static Future<void> updatePassword(String password) =>
+      _auth.updateUser(UserAttributes(password: password));
+
+  /// Deletes the member's account and everything tied to it
+  /// (supabase/account_deletion.sql), then signs out on this device.
+  static Future<void> deleteAccount() async {
+    try {
+      await Supabase.instance.client.rpc<void>('delete_my_account');
+    } on PostgrestException catch (error) {
+      throw ChurchDataException(switch (error.code) {
+        // Worded for people, such as the church's only super admin.
+        'CC001' => error.message,
+        'PGRST202' =>
+          "Deleting accounts isn't set up yet. Ask church staff to finish "
+              "the app's setup.",
+        _ => "Your account couldn't be deleted. Try again in a moment.",
+      });
+    }
+    // The account no longer exists, so only this device's session remains.
+    await _auth.signOut(scope: SignOutScope.local);
+  }
 
   static Future<void> signInWithProvider(OAuthProvider provider) async {
     await _auth.signInWithOAuth(

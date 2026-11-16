@@ -177,10 +177,26 @@ class NewsCard extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: DetailsLink(label: 'Read story', onTap: onDetails),
+            padding: const EdgeInsets.all(6),
+            // The date sits opposite the link, away from a long branch name,
+            // and drops under it when large text leaves no room.
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                DetailsLink(label: 'Read story', onTap: onDetails),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    dayLabel(item.publishedAt),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.3,
+                      color: p.textMuted,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

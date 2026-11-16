@@ -10,6 +10,7 @@ import 'package:ccc_app/models/member_details.dart';
 import 'package:ccc_app/models/ministry.dart';
 import 'package:ccc_app/models/news.dart';
 import 'package:ccc_app/models/sermon.dart';
+import 'package:ccc_app/models/stream_settings.dart';
 import 'package:ccc_app/services/admin_service.dart';
 import 'package:ccc_app/services/auth_service.dart';
 import 'package:ccc_app/services/content_service.dart';
@@ -287,6 +288,7 @@ NewsItem newsItem(
   String church = NewsItem.churchName,
   String subtitle = '',
   String summary = '',
+  DateTime? publishedAt,
 }) => NewsItem(
   id: id,
   title: title,
@@ -295,6 +297,7 @@ NewsItem newsItem(
   summary: summary,
   body: 'The full story of $title.',
   images: const [],
+  publishedAt: publishedAt ?? DateTime(2026, 11, 2, 9),
 );
 
 /// Church-wide news, plus Botwe's own for Botwe listeners.
@@ -449,6 +452,31 @@ class FakeMinistries implements MinistrySource {
 
 /// Records what staff screens ask the backend to do.
 class FakeAdmin implements AdminSource {
+  List<StreamSettings> streamBranches = [];
+  final savedChannels = <({String branchId, String? channel})>[];
+  final mediaLeadersByBranch = <String, List<String>>{};
+
+  @override
+  Future<List<StreamSettings>> streamSettings() async => streamBranches;
+  @override
+  Future<void> saveStreamChannel(String branchId, String? channel) async {
+    savedChannels.add((branchId: branchId, channel: channel));
+  }
+
+  @override
+  Future<List<String>> mediaLeaders(String branchId) async => [
+    ...?mediaLeadersByBranch[branchId],
+  ];
+  @override
+  Future<void> addMediaLeader(String branchId, String email) async {
+    final leaders = mediaLeadersByBranch[branchId] ??= [];
+    if (!leaders.contains(email)) leaders.add(email);
+  }
+
+  @override
+  Future<void> removeMediaLeader(String branchId, String email) async =>
+      mediaLeadersByBranch[branchId]?.remove(email);
+
   FakeAdmin({this.role, Map<ContentKind, List<Map<String, dynamic>>>? rows})
     : rowsByKind = rows ?? {};
 

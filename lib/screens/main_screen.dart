@@ -24,6 +24,8 @@ import '../widgets/cards.dart';
 import '../widgets/ccc_widgets.dart';
 import '../widgets/sermon_player_view.dart';
 import 'admin/admin_lists.dart';
+import 'admin/stream_settings_screen.dart';
+import 'delete_account_screen.dart';
 import 'event_details_screen.dart';
 import 'join_requests_screen.dart';
 import 'member_details_screen.dart';
@@ -362,6 +364,31 @@ class _MainScreenState extends State<MainScreen> {
                     openMemberDetails(context);
                   },
                 ),
+                ListenableBuilder(
+                  listenable: CccScope.of(context).staff,
+                  builder: (_, _) {
+                    if (!CccScope.of(context).staff.canManageStreams) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: _AccountRow(
+                        icon: Icons.live_tv_outlined,
+                        label: 'Live stream settings',
+                        value: 'Your branch’s YouTube channel',
+                        action: 'Manage',
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const StreamSettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
                 // Leaders, and staff who manage ministries that approve
                 // their members.
                 ListenableBuilder(
@@ -440,14 +467,34 @@ class _MainScreenState extends State<MainScreen> {
                   onPressed: () async {
                     Navigator.pop(sheetContext);
                     final state = CccScope.of(context);
-                    final player = state.player;
                     await AuthService.signOut();
-                    await state.ministries.useMember(null);
-                    await state.staff.useMember(null);
-                    await state.sermons.useListener(null);
-                    await player.close();
+                    await state.forgetMember();
                     if (mounted) CccNavigation.openWelcome(context);
                   },
+                ),
+                const SizedBox(height: 4),
+                // Apart from Sign out, quiet and red: it can't be undone.
+                Center(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const DeleteAccountScreen(),
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: p.error,
+                      minimumSize: const Size(48, 48),
+                      textStyle: const TextStyle(
+                        fontFamily: CccFonts.openSans,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    child: const Text('Delete account'),
+                  ),
                 ),
               ],
             ),

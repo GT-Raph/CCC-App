@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CCC — User screenshots</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f4f4f0; color: #191810; font: 16px/1.5 system-ui, sans-serif; }
+    header, main { max-width: 1440px; margin: auto; padding: 32px; }
+    header { padding-bottom: 12px; }
+    h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 46px); letter-spacing: -.04em; }
+    h2 { margin: 36px 0 16px; font-size: 24px; }
+    p { margin: 6px 0; color: #625e53; }
+    nav { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    a { color: #765600; }
+    nav a { border: 1px solid #d8d5ca; border-radius: 99px; padding: 8px 16px; text-decoration: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 26px; }
+    figure { margin: 0; max-width: 430px; }
+    figcaption { padding: 4px 0 12px; font-size: 17px; font-weight: 650; }
+    figure img { display: block; width: 100%; height: auto; border: 1px solid #dedbd2; border-radius: 18px; }
+    figure a { display: block; border-radius: 18px; }
+    figure a:focus-visible { outline: 4px solid #e7b713; outline-offset: 4px; }
+    .note { padding: 14px 18px; background: #eee9da; border-radius: 12px; margin-top: 20px; max-width: 900px; }
+    footer { max-width: 1440px; margin: auto; padding: 24px 32px 48px; color: #625e53; }
+    @media (max-width: 580px) { header, main { padding: 20px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CCC, as a user sees it</h1>
+    <p>15 screenshots rendered from the current Flutter app. Open any image to see it at full size.</p>
+    <p class="note">Light-mode phone layouts at 430 × 932, exported at 2× resolution. Member names, news, events, ministries, branch details, and sermons are sample data used only for these captures. These are app-only renders, without an operating-system status bar.</p>
+    <nav aria-label="Screenshot sections">
+      <a href="#start">Welcome &amp; sign-in</a><a href="#main">Main screens</a><a href="#details">Member details</a><a href="#leader">Ministry leaders</a><a href="overview-main.png">Overview image</a>
+    </nav>
+  </header>
+  <main>
+    <section id="start"><h2>Welcome &amp; sign-in</h2><div class="grid">
+      <figure><figcaption>01 · Welcome</figcaption><a href="01-welcome.png"><img src="01-welcome.png" alt="CCC welcome screen" width="860" height="1864"></a></figure>
+      <figure><figcaption>02 · Log in</figcaption><a href="02-login.png"><img src="02-login.png" alt="Member login screen" width="860" height="1864"></a></figure>
+      <figure><figcaption>03 · Create account</figcaption><a href="03-create-account.png"><img src="03-create-account.png" alt="Create account form" width="860" height="1864"></a></figure>
+    </div></section>
+    <section id="main"><h2>Main screens</h2><div class="grid">
+      <figure><figcaption>04 · Home / News</figcaption><a href="04-home.png"><img src="04-home.png" alt="Member home with sample church news" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>05 · Events</figcaption><a href="05-events.png"><img src="05-events.png" alt="Upcoming sample church events" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>06 · Church / Branches</figcaption><a href="06-church.png"><img src="06-church.png" alt="Church branch list with sample locations" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>07 · Ministries</figcaption><a href="07-ministries.png"><img src="07-ministries.png" alt="Ministries with Join and Joined actions" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>08 · Sermons</figcaption><a href="08-sermons.png"><img src="08-sermons.png" alt="Sample sermon list" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>10 · Account</figcaption><a href="10-account.png"><img src="10-account.png" alt="Ordinary member account menu" loading="lazy" width="860" height="1864"></a></figure>
+    </div></section>
+    <section id="details"><h2>Member details</h2><div class="grid">
+      <figure><figcaption>09 · Sermon player</figcaption><a href="09-sermon-player.png"><img src="09-sermon-player.png" alt="Sermon playback controls" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>11 · Event details</figcaption><a href="11-event-details.png"><img src="11-event-details.png" alt="Event information and reminder action" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>12 · Ministry details</figcaption><a href="12-ministry-details.png"><img src="12-ministry-details.png" alt="Ministry information and join action" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>13 · About you</figcaption><a href="13-about-you.png"><img src="13-about-you.png" alt="Optional profile information for ministry matching" loading="lazy" width="860" height="1864"></a></figure>
+    </div></section>
+    <section id="leader"><h2>Ministry leaders</h2><p>These two screens are available to the relevant ministry leaders or staff.</p><div class="grid">
+      <figure><figcaption>14 · Membership requirements</figcaption><a href="14-leader-requirements.png"><img src="14-leader-requirements.png" alt="Ministry leader membership requirements form" loading="lazy" width="860" height="1864"></a></figure>
+      <figure><figcaption>15 · Join requests</figcaption><a href="15-leader-join-requests.png"><img src="15-leader-join-requests.png" alt="Leader approval and decline actions for sample requests" loading="lazy" width="860" height="1864"></a></figure>
+    </div></section>
+  </main>
+  <footer>Captured from the app source with its bundled fonts and assets. Sample content is not published to the app or Supabase.</footer>
+</body>
+</html>

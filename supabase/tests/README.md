@@ -21,7 +21,17 @@ leaders can set requirements only for their ministries, including automatic
 ministries; their saves run matching without exposing private details or
 granting content access; and rerunning the migration preserves existing rules.
 
-All three share the stand-ins in `supabase_stub.mjs`.
+`stream_settings_test.mjs` checks staff appointment of media leaders, confirmed
+email requirements, cross-branch isolation, the limited channel write API, input
+validation, disconnection, revocation, and rejection of stale checker results.
+
+`account_deletion_test.mjs` runs every script through
+`../account_deletion.sql` and checks that members delete their own account,
+details, memberships and roles and nobody else's; that church content stays;
+that the only super admin can't leave the church without one; and that
+guests can't call it.
+
+All tests share the stand-ins in `supabase_stub.mjs`.
 
 ```sh
 cd supabase/tests

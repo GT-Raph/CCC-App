@@ -40,7 +40,10 @@ so members are added to the ministries that are for them, and
 [ministry_approval.sql](supabase/ministry_approval.sql) so ministries such as
 Media or Choir approve their new members, then
 [ministry_rules.sql](supabase/ministry_rules.sql) so ministry leaders can set
-membership requirements. Run them in that order, and again
+membership requirements, [stream_settings.sql](supabase/stream_settings.sql)
+for live streams (see "Live streams"), and
+[account_deletion.sql](supabase/account_deletion.sql) so members can delete
+their accounts. Run them in that order, and again
 in that order after updating the app. These scripts add no example content.
 
 `branches.sql` contains Google listing IDs collected for the church. Church
@@ -157,8 +160,15 @@ In the dashboard, the rules are the `ministries` columns `auto_assign`,
 `for_students`; `ministry_members.added_automatically` marks automatic
 memberships.
 
-Staff can assign leaders by sign-in email in **Edit ministry → Leaders** for
-any ministry, including those that add members automatically. Leaders with a
+Super admins appoint leaders for any branch's or church-wide ministry under
+**Account → Manage church content → Ministry leaders**: choose the ministry,
+enter the person's sign-in email, and tap **Add leader**. The appointment saves
+immediately. HQ admins have the same reach; branch staff see only their branch's
+ministries. The person must confirm their email and reopen the app to use their
+leader access. Adding someone already appointed never creates a second assignment.
+
+Staff can also assign leaders in **Edit ministry → Leaders** for
+any ministry they manage, including those that add members automatically. Leaders with a
 confirmed email can open **Account → Membership requirements**, choose their
 ministry, and use the same age, gender, marital-status and student-status rules.
 They can also open **Membership requirements** from that ministry's details.
@@ -220,14 +230,42 @@ Confirm storage and bandwidth limits in your Supabase project.
 
 ## Live streams
 
-Each streaming branch needs its actual YouTube `UC...` channel ID in
-`branches.youtube_channel_id`. The function discovers public streams from that
-channel; no event-specific video link is needed. Public videos must permit
+Staff and media leaders connect channels **inside the app**, under
+**Account → Live stream settings**. Staff also find this under
+**Manage church content → Live stream settings**.
+
+- Branch staff choose their branch, open **Manage media leaders**, and add each
+  leader's sign-in email. HQ admins can do this for any branch. Leaders must
+  confirm their email and reopen the app after being added.
+- Media leaders choose a branch they manage and paste its YouTube channel link,
+  `@handle`, or `UC...` channel ID, then tap **Save channel**. Links to the channel's
+  Live/Streams tab work too; individual video links do not.
+- **Open channel** lets them check they chose the right channel. **Refresh status**
+  reads the last automatic check; saving a link does not mean YouTube has verified it.
+- Changing or disconnecting a channel clears the old stream immediately and
+  invalidates any check already running. New channels are due at the next cron run.
+- Media leaders can change only their assigned branches' channels. They cannot
+  change branch details, publish content, appoint leaders, or mark a stream live.
+  This is a separate appointment from ministry leadership; it grants no staff role.
+
+The database enforces these permissions. Run
+[stream_settings.sql](supabase/stream_settings.sql) after `schema.sql` and
+`staff.sql`, **before deploying the updated checker**. It preserves existing
+channels and is safe to rerun. No channel IDs or leader emails need to be entered
+in the Supabase dashboard after this one-time setup. API keys and scheduling
+remain server configuration, never fields in the app.
+
+The checker resolves handles using YouTube's
+[channels.list API](https://developers.google.com/youtube/v3/docs/channels/list).
+IDs stay in `branches.youtube_channel_id`; handles use `youtube_channel_handle`.
+The function discovers public streams from that channel; no event-specific video
+link is needed. Public videos must permit
 embedding. Channel discovery uses a live-playlist convention with an uploads
 fallback; it is not a guarantee of discovery for every channel. Verify each
 branch during a real broadcast before enabling it in production.
 
-1. Enable YouTube Data API v3 in Google Cloud; create an API-restricted key.
+1. Run `stream_settings.sql`, then enable YouTube Data API v3 in Google Cloud;
+   create an API-restricted key.
 2. Deploy [check-live-streams](supabase/functions/check-live-streams/index.ts)
    to Supabase with JWT verification disabled **only for this function**.
    It independently requires the `x-cron-secret` header.
@@ -240,16 +278,46 @@ branch during a real broadcast before enabling it in production.
    [Supabase's scheduling guide](https://supabase.com/docs/guides/functions/schedule-functions).
 
 Check `live_streams.error` and the function logs. Quota consumption depends on
-channel count, frequency and fallback calls; monitor it in Google Cloud.
+channel count, handle resolution, frequency and fallback calls; monitor it in Google Cloud.
 Unscheduled streams may take up to 30 minutes to be discovered. Around listed
 events the checker polls more often. Readings older than 20 minutes are no
 longer displayed as live. Private and unlisted streams are not supported.
 
 ## Authentication
 
-Email sign-in uses Supabase Auth. Configure production email delivery,
-confirmation URLs and the recovery flow before release. Register
-`io.supabase.cccapp://login-callback/` under **Authentication → URL Configuration**.
+Email sign-in uses Supabase Auth. Register
+`io.supabase.cccapp://login-callback/` under **Authentication → URL
+Configuration → Redirect URLs**; social sign-in and password reset both
+return to the app through it. To test password reset on the web build, also
+add the address you open it at (for example `http://192.168.1.20:8081/`).
+
+Supabase's built-in email sender only reaches your Supabase team's own
+addresses, a few emails an hour. Before members sign up, set up custom SMTP
+under **Authentication → Emails → SMTP Settings** (for example the church's
+email provider), or confirmation and reset emails won't arrive.
+
+### Forgotten passwords
+
+**Forgot password?** on the login screen emails a reset link. Opening the
+link on the same phone opens the app on **Choose a new password**; Supabase
+has already signed the member in, and **Cancel** signs them out again. The
+link must be opened on the device that asked for it, because the app keeps
+the matching half of the reset code.
+
+### Deleting an account
+
+Members delete their account from **Account → Delete account**, as Google
+Play and the App Store require. Run
+[account_deletion.sql](supabase/account_deletion.sql) first. It deletes the
+account with the member's profile, details, ministry memberships and
+requests, and removes their email from the staff, ministry leader and media
+leader lists. Church content they posted stays. The church's only super
+admin is asked to appoint another first.
+
+Play also needs a web page for deletion requests and a privacy policy. Drafts
+are in [docs/delete-account.html](docs/delete-account.html) and
+[docs/privacy.html](docs/privacy.html): fill in the church's email address,
+have the church approve them, and host them (see PRODUCTION.md).
 
 Social buttons are hidden by default. Enable and test each provider in
 Supabase, then set `SOCIAL_SIGN_IN=google,apple` (or `facebook`) in `.env` to

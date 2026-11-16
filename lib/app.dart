@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'screens/set_new_password_screen.dart';
 import 'screens/splash_screen.dart';
 import 'services/auth_service.dart';
 import 'services/places_service.dart';
@@ -38,6 +41,31 @@ class _CccAppState extends State<CccApp> {
 
   late final state = widget.state ?? _create();
 
+  final _navigator = GlobalKey<NavigatorState>();
+  StreamSubscription<void>? _recoveries;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AuthService.isConfigured) {
+      _recoveries = AuthService.passwordRecoveries.listen(
+        (_) => _choosePassword(),
+      );
+    }
+  }
+
+  /// A password reset link opened the app, whatever screen was showing
+  /// (or while the splash screen was still up).
+  void _choosePassword() {
+    void open() => _navigator.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const SetNewPasswordScreen()),
+      (_) => false,
+    );
+    _navigator.currentState == null
+        ? WidgetsBinding.instance.addPostFrameCallback((_) => open())
+        : open();
+  }
+
   CccState _create() => CccState(
     branches: BranchDirectory(
       places: (widget.googleMapsApiKey ?? '').isEmpty
@@ -50,6 +78,7 @@ class _CccAppState extends State<CccApp> {
 
   @override
   void dispose() {
+    _recoveries?.cancel();
     if (widget.state == null) state.dispose();
     super.dispose();
   }
@@ -59,6 +88,7 @@ class _CccAppState extends State<CccApp> {
     return CccScope(
       state: state,
       child: MaterialApp(
+        navigatorKey: _navigator,
         title: 'CCC',
         debugShowCheckedModeBanner: false,
         // Light or dark with the phone.

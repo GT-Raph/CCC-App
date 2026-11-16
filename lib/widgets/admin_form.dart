@@ -10,6 +10,17 @@ import 'ccc_widgets.dart';
 /// A staff form screen: the back button and title, the fields, and Save
 /// (plus Delete for existing items) at the bottom. Leaving with unsaved
 /// changes asks first.
+/// Side padding that keeps content in a centred column at most [maxWidth]
+/// wide on tablets and desktop browsers; phones keep [min].
+double readableGutter(
+  BuildContext context, {
+  double maxWidth = 600,
+  double min = 20,
+}) {
+  final width = MediaQuery.sizeOf(context).width;
+  return width - 2 * min > maxWidth ? (width - maxWidth) / 2 : min;
+}
+
 class AdminFormScaffold extends StatelessWidget {
   const AdminFormScaffold({
     required this.title,
@@ -42,6 +53,7 @@ class AdminFormScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final bottom = MediaQuery.paddingOf(context).bottom;
+    final side = readableGutter(context);
     return PopScope(
       canPop: !dirty || busy,
       onPopInvokedWithResult: (didPop, _) async {
@@ -65,7 +77,7 @@ class AdminFormScaffold extends StatelessWidget {
                 child: ListView(
                   keyboardDismissBehavior:
                       ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: EdgeInsets.fromLTRB(20, 8, 20, 24 + bottom),
+                  padding: EdgeInsets.fromLTRB(side, 8, side, 24 + bottom),
                   children: [
                     ...children,
                     const SizedBox(height: 20),

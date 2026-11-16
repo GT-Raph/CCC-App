@@ -26,7 +26,12 @@ Future<List<Map<String, dynamic>>> churchQuery(
     return await run();
   } on PostgrestException catch (error) {
     // PGRST205 / 42P01: no such table. 42703: no such column.
-    final missing = const {'PGRST205', '42P01', '42703'}.contains(error.code);
+    final missing = const {
+      'PGRST202',
+      'PGRST205',
+      '42P01',
+      '42703',
+    }.contains(error.code);
     throw ChurchDataException(switch (error.code) {
       _ when missing => '$what are not set up yet.',
       // Row-level security refused it (supabase/staff.sql).

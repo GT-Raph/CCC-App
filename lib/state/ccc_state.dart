@@ -80,6 +80,15 @@ class CccState extends ChangeNotifier {
   late final EventBoard events;
   late final MinistryDirectory ministries;
 
+  /// Forgets the member on this device after they sign out or delete their
+  /// account: their ministries, staff access and branch, and the player.
+  Future<void> forgetMember() async {
+    await ministries.useMember(null);
+    await staff.useMember(null);
+    await sermons.useListener(null);
+    await player.close();
+  }
+
   @override
   void dispose() {
     reminders.removeListener(notifyListeners);

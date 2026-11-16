@@ -706,11 +706,17 @@ class _SermonEditorState extends State<SermonEditor>
 
 /// Adds or edits a ministry.
 class MinistryEditor extends StatefulWidget {
-  const MinistryEditor({this.id, this.rulesOnly = false, super.key})
-    : assert(!rulesOnly || id != null);
+  const MinistryEditor({
+    this.id,
+    this.rulesOnly = false,
+    this.leadersOnly = false,
+    super.key,
+  }) : assert(!(rulesOnly && leadersOnly)),
+       assert(!(rulesOnly || leadersOnly) || id != null);
 
   final String? id;
   final bool rulesOnly;
+  final bool leadersOnly;
 
   @override
   State<MinistryEditor> createState() => _MinistryEditorState();
@@ -761,6 +767,11 @@ class _MinistryEditorState extends State<MinistryEditor>
       return;
     }
     final draft = MinistryDraft.fromRow(row);
+    if (widget.leadersOnly && !app.staff.canManage(draft.branchId)) {
+      loadError =
+          "You don't have permission to appoint leaders for this ministry.";
+      return;
+    }
     if (widget.rulesOnly &&
         !app.staff.canSetMinistryRules(draft.id!, draft.branchId)) {
       loadError = "You don't have permission to change these requirements.";
@@ -817,6 +828,8 @@ class _MinistryEditorState extends State<MinistryEditor>
   }
 
   Future<void> _loadLeaders(String id) async {
+    if (!mounted) return;
+    setState(() => leaderError = null);
     try {
       final found = await admin.leaders(id);
       if (mounted) setState(() => leaders = found);
@@ -827,18 +840,29 @@ class _MinistryEditorState extends State<MinistryEditor>
 
   Future<void> _addLeader() async {
     final id = editingId;
-    if (id == null) return;
+    if (id == null ||
+        leaders == null ||
+        leaderBusy ||
+        !app.staff.canManage(branchId)) {
+      return;
+    }
     final address = leaderEmail.text.trim().toLowerCase();
     final valid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(address);
     setState(() => leaderError = valid ? null : 'Enter their sign-in email.');
     if (!valid) return;
+    if (leaders?.contains(address) ?? false) {
+      setState(() => leaderError = 'This person is already a leader.');
+      return;
+    }
     setState(() => leaderBusy = true);
     try {
       await admin.addLeader(id, address);
+      if (!mounted) return;
       leaderEmail.clear();
-      await _loadLeaders(id);
+      setState(() => leaders = {...?leaders, address}.toList()..sort());
+      showCccMessage(context, 'Ministry leader added.');
     } on ChurchDataException catch (e) {
-      if (mounted) showCccMessage(context, e.message);
+      if (mounted) setState(() => leaderError = e.message);
     } finally {
       if (mounted) setState(() => leaderBusy = false);
     }
@@ -846,12 +870,18 @@ class _MinistryEditorState extends State<MinistryEditor>
 
   Future<void> _removeLeader(String email) async {
     final id = editingId;
-    if (id == null) return;
+    if (id == null || leaderBusy || !app.staff.canManage(branchId)) return;
+    setState(() {
+      leaderBusy = true;
+      leaderError = null;
+    });
     try {
       await admin.removeLeader(id, email);
-      await _loadLeaders(id);
+      if (mounted) setState(() => leaders?.remove(email));
     } on ChurchDataException catch (e) {
-      if (mounted) showCccMessage(context, e.message);
+      if (mounted) setState(() => leaderError = e.message);
+    } finally {
+      if (mounted) setState(() => leaderBusy = false);
     }
   }
 
@@ -866,12 +896,23 @@ class _MinistryEditorState extends State<MinistryEditor>
       );
     }
     final leaders = this.leaders;
+    if (leaders == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(leaderError ?? 'Loading leaders…', style: muted),
+          if (leaderError != null)
+            TextButton(
+              onPressed: () => _loadLeaders(editingId!),
+              child: const Text('Retry loading leaders'),
+            ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (leaders == null)
-          Text('Loading leaders…', style: muted)
-        else if (leaders.isEmpty)
+        if (leaders.isEmpty)
           Text(
             'No leaders yet. Staff who manage this ministry set its '
             'requirements and answer any requests.',
@@ -894,7 +935,7 @@ class _MinistryEditorState extends State<MinistryEditor>
                     ),
                     trailing: IconButton(
                       tooltip: 'Remove $email',
-                      onPressed: () => _removeLeader(email),
+                      onPressed: leaderBusy ? null : () => _removeLeader(email),
                       icon: Icon(Icons.person_remove_outlined, color: p.error),
                     ),
                   ),
@@ -910,7 +951,7 @@ class _MinistryEditorState extends State<MinistryEditor>
           keyboardType: TextInputType.emailAddress,
           capitalization: TextCapitalization.none,
           helper:
-              'They need a CCC account with this email. Leaders set '
+              'They must confirm this email and reopen the app. Leaders set '
               'membership requirements and answer requests for this ministry.',
         ),
         const SizedBox(height: 12),
@@ -999,6 +1040,38 @@ class _MinistryEditorState extends State<MinistryEditor>
   @override
   Widget build(BuildContext context) {
     final id = editingId;
+    if (widget.leadersOnly) {
+      return Scaffold(
+        body: Column(
+          children: [
+            const DetailsHeader(title: 'Ministry leaders'),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  8,
+                  20,
+                  24 + MediaQuery.paddingOf(context).bottom,
+                ),
+                children: body(
+                  () => [
+                    FormSection(
+                      title: name.text,
+                      children: [
+                        const Text(
+                          'Add the people who lead this ministry. Their appointment saves as soon as you tap Add leader.',
+                        ),
+                        _leaders(),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return AdminFormScaffold(
       title: widget.rulesOnly
           ? 'Membership requirements'

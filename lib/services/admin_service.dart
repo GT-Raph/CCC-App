@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/admin_drafts.dart';
+import '../models/stream_settings.dart';
 import 'auth_service.dart';
 import 'church_query.dart';
 
@@ -54,6 +55,12 @@ abstract interface class AdminSource {
 
   Future<void> removeStaff(String email);
 
+  Future<List<StreamSettings>> streamSettings();
+  Future<void> saveStreamChannel(String branchId, String? channel);
+  Future<List<String>> mediaLeaders(String branchId);
+  Future<void> addMediaLeader(String branchId, String email);
+  Future<void> removeMediaLeader(String branchId, String email);
+
   /// The sign-in emails of [ministryId]'s leaders, who set its requirements
   /// and answer its requests to join.
   Future<List<String>> leaders(String ministryId);
@@ -91,6 +98,72 @@ class AdminService implements AdminSource {
       AuthService.isConfigured ? AdminService(Supabase.instance.client) : null;
 
   final SupabaseClient _client;
+
+  @override
+  Future<List<StreamSettings>> streamSettings() async {
+    final rows = await churchQuery('Live stream settings', () async {
+      final result = await _client.rpc<List<dynamic>>('stream_settings_for_me');
+      return result.cast<Map<String, dynamic>>();
+    });
+    return [for (final row in rows) StreamSettings.fromRow(row)];
+  }
+
+  @override
+  Future<void> saveStreamChannel(String branchId, String? channel) async {
+    await churchQuery('Live stream settings', () async {
+      await _client.rpc(
+        'save_stream_channel',
+        params: {'target': branchId, 'channel': channel},
+      );
+      return const <Map<String, dynamic>>[];
+    }, saving: true);
+  }
+
+  @override
+  Future<List<String>> mediaLeaders(String branchId) async {
+    final rows = await churchQuery(
+      'Media leaders',
+      () => _client
+          .from('branch_media_leaders')
+          .select('email')
+          .eq('branch_id', branchId)
+          .order('email'),
+    );
+    return [for (final row in rows) row['email'] as String];
+  }
+
+  @override
+  Future<void> addMediaLeader(String branchId, String email) async {
+    await churchQuery('Media leaders', () async {
+      await _client
+          .from('branch_media_leaders')
+          .upsert(
+            {'branch_id': branchId, 'email': email.trim().toLowerCase()},
+            onConflict: 'branch_id,email',
+            ignoreDuplicates: true,
+          );
+      return const <Map<String, dynamic>>[];
+    }, saving: true);
+  }
+
+  @override
+  Future<void> removeMediaLeader(String branchId, String email) async {
+    final rows = await churchQuery(
+      'Media leaders',
+      () => _client
+          .from('branch_media_leaders')
+          .delete()
+          .eq('branch_id', branchId)
+          .eq('email', email)
+          .select('email'),
+      saving: true,
+    );
+    if (rows.isEmpty) {
+      throw const ChurchDataException(
+        "This leader couldn't be removed. Refresh and try again.",
+      );
+    }
+  }
 
   @override
   Future<StaffRole?> myRole() async {
@@ -286,24 +359,32 @@ class AdminService implements AdminSource {
   @override
   Future<void> addLeader(String ministryId, String email) async {
     await churchQuery('Leaders', () async {
-      await _client.from('ministry_leaders').upsert({
-        'ministry_id': ministryId,
-        'email': email.trim().toLowerCase(),
-      });
+      await _client
+          .from('ministry_leaders')
+          .upsert(
+            {'ministry_id': ministryId, 'email': email.trim().toLowerCase()},
+            onConflict: 'ministry_id,email',
+            ignoreDuplicates: true,
+          );
       return const <Map<String, dynamic>>[];
     }, saving: true);
   }
 
   @override
   Future<void> removeLeader(String ministryId, String email) async {
-    await churchQuery('Leaders', () async {
-      await _client
+    final rows = await churchQuery('Leaders', () async {
+      return await _client
           .from('ministry_leaders')
           .delete()
           .eq('ministry_id', ministryId)
-          .eq('email', email);
-      return const <Map<String, dynamic>>[];
+          .eq('email', email)
+          .select('email');
     }, saving: true);
+    if (rows.isEmpty) {
+      throw const ChurchDataException(
+        "This leader couldn't be removed. Reload and try again.",
+      );
+    }
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:ccc_app/main.dart';
+import 'package:ccc_app/models/news.dart';
 import 'package:ccc_app/screens/main_screen.dart';
 import 'package:ccc_app/screens/welcome_screen.dart';
 import 'package:ccc_app/services/auth_service.dart';
@@ -125,6 +126,39 @@ void main() {
     expect(find.text('Log in to continue'), findsNothing);
     expect(find.text('News'), findsOneWidget);
     expect(find.text('Harvest Thanksgiving'), findsOneWidget);
+  });
+
+  test('news reads its publish time from the row, in local time', () {
+    final item = NewsItem.fromRow({
+      'id': 'n1',
+      'title': 'Harvest Thanksgiving',
+      'published_at': '2026-11-02T09:30:00Z',
+    }, imageUrl: (path) => path);
+    expect(item.publishedAt, DateTime.utc(2026, 11, 2, 9, 30).toLocal());
+  });
+
+  testWidgets('news cards and stories show when they were published', (
+    tester,
+  ) async {
+    usePhoneScreen(tester);
+    final harness = Harness(
+      news: FakeNews(
+        (_) => [
+          newsItem(
+            'harvest',
+            'Harvest Thanksgiving',
+            publishedAt: DateTime(2026, 11, 2, 9),
+          ),
+        ],
+      ),
+    );
+    addTearDown(harness.events.streams.close);
+    await harness.pump(tester, const MainScreen(member: ama));
+
+    expect(find.text('2nd November 2026'), findsOneWidget);
+    await tester.tap(find.text('Read story'));
+    await tester.pumpAndSettle();
+    expect(find.text('Published 2nd November 2026'), findsOneWidget);
   });
 
   testWidgets('guest member-only actions open the login prompt', (

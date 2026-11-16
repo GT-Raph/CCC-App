@@ -22,6 +22,9 @@ class StaffAccess extends ChangeNotifier {
   /// Includes led ministries that do not require approval to join.
   Set<String> ruleMinistryIds = {};
 
+  Set<String> streamBranchIds = {};
+  bool get canManageStreams => isStaff || streamBranchIds.isNotEmpty;
+
   int get waitingRequests =>
       approvals.fold(0, (sum, ministry) => sum + ministry.waiting);
 
@@ -44,6 +47,7 @@ class StaffAccess extends ChangeNotifier {
     role = null;
     approvals = const [];
     ruleMinistryIds = {};
+    streamBranchIds = {};
     email = member?.email;
     _changed();
     final source = this.source;
@@ -59,6 +63,22 @@ class StaffAccess extends ChangeNotifier {
     await refreshApprovals();
     if (_disposed || generation != _generation) return;
     await refreshRuleMinistries();
+    if (_disposed || generation != _generation) return;
+    await refreshStreams();
+  }
+
+  Future<void> refreshStreams() async {
+    final source = this.source;
+    if (source == null || email == null) return;
+    final generation = _generation;
+    try {
+      final found = await source.streamSettings();
+      if (_disposed || generation != _generation) return;
+      streamBranchIds = {for (final branch in found) branch.id};
+      _changed();
+    } catch (_) {
+      // The rest of the app works before stream_settings.sql is installed.
+    }
   }
 
   Future<void> refreshRuleMinistries() async {

@@ -120,6 +120,14 @@ class Event {
 
 /// "19th October 2026, 09:00 AM", as the design writes event dates.
 String eventDateLabel(DateTime time) {
+  final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
+  String two(int value) => value.toString().padLeft(2, '0');
+  return '${dayLabel(time)}, '
+      '${two(hour)}:${two(time.minute)} ${time.hour < 12 ? 'AM' : 'PM'}';
+}
+
+/// "19th October 2026": the date alone, written like [eventDateLabel].
+String dayLabel(DateTime time) {
   const months = [
     'January',
     'February',
@@ -143,8 +151,5 @@ String eventDateLabel(DateTime time) {
           3 => 'rd',
           _ => 'th',
         };
-  final hour = time.hour % 12 == 0 ? 12 : time.hour % 12;
-  String two(int value) => value.toString().padLeft(2, '0');
-  return '$day$suffix ${months[time.month - 1]} ${time.year}, '
-      '${two(hour)}:${two(time.minute)} ${time.hour < 12 ? 'AM' : 'PM'}';
+  return '$day$suffix ${months[time.month - 1]} ${time.year}';
 }

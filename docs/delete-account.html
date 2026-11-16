@@ -1,0 +1,96 @@
+<!doctype html>
+<!--
+  Google Play asks for a web link where people can ask for their account to be
+  deleted. Host this page (for example on GitHub Pages or the church website)
+  and give its address in Play Console under App content > Data safety.
+  Before publishing, replace every [church email address] with the church's
+  real contact address.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Delete your CCC account</title>
+  <style>
+    :root {
+      --bg: #F5F5F2; --surface: #FFFFFF; --text: #16140F; --muted: #57534B;
+      --line: #E4E2DD; --accent: #8A6500;
+      color-scheme: light dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #13110D; --surface: #1C1A16; --text: #F3EFE7; --muted: #CBC4B7;
+        --line: #2E2A24; --accent: #E7B41F;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 40px 20px 64px; }
+    h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
+    h2 { font-size: 20px; margin: 36px 0 8px; }
+    p, li { color: var(--muted); }
+    .lead { font-size: 18px; color: var(--text); }
+    ol, ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 16px; padding: 4px 20px; margin-top: 12px;
+    }
+    a { color: var(--accent); font-weight: 600; }
+    footer { margin-top: 48px; font-size: 15px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Delete your CCC account</h1>
+    <p class="lead">
+      The CCC app is published by Calvary Charismatic Centre. You can delete
+      your account at any time, in the app or by email.
+    </p>
+
+    <h2>In the app</h2>
+    <div class="card">
+      <ol>
+        <li>Open the CCC app and log in.</li>
+        <li>Tap your initial at the top right to open your account.</li>
+        <li>Tap <strong>Delete account</strong>, read what will be deleted,
+          then tap <strong>Delete account</strong> and confirm.</li>
+      </ol>
+    </div>
+    <p>Your account is deleted straight away.</p>
+
+    <h2>Without the app</h2>
+    <p>
+      Email <a href="mailto:[church email address]?subject=Delete%20my%20CCC%20account">[church email address]</a>
+      from the email address you signed up with, with the subject
+      &ldquo;Delete my CCC account&rdquo;. We&rsquo;ll delete your account
+      within 30 days and reply to confirm.
+    </p>
+
+    <h2>What&rsquo;s deleted</h2>
+    <ul>
+      <li>Your name, email address, password and branch</li>
+      <li>The details you gave about yourself: date of birth, gender, marital
+        status and whether you&rsquo;re a student</li>
+      <li>Your ministry memberships and requests to join ministries</li>
+      <li>Any staff, ministry leader or media leader role you have</li>
+    </ul>
+
+    <h2>What&rsquo;s kept</h2>
+    <ul>
+      <li>News, events, sermons and photos that church staff posted for the
+        church. They belong to the church, and its staff can remove them.</li>
+      <li>Copies in our service provider&rsquo;s routine backups, until those
+        backups expire.</li>
+    </ul>
+
+    <footer>
+      Questions? Email <a href="mailto:[church email address]">[church email address]</a>.
+      Read our <a href="privacy.html">privacy policy</a>.
+    </footer>
+  </main>
+</body>
+</html>

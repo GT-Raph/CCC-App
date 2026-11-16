@@ -9,6 +9,7 @@ import '../../widgets/admin_form.dart';
 import '../../widgets/ccc_widgets.dart';
 import 'content_editor.dart';
 import 'editors.dart';
+import 'stream_settings_screen.dart';
 
 /// Opens the editor for [kind]: a new item, or the one with [id].
 Future<EditorResult?> openEditor(
@@ -95,6 +96,33 @@ class AdminHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                 ],
+                if (role != null) ...[
+                  _HubTile(
+                    icon: Icons.supervisor_account_outlined,
+                    title: 'Ministry leaders',
+                    subtitle: 'Appoint leaders by their sign-in email',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AdminListScreen(
+                          kind: ContentKind.ministries,
+                          leadersOnly: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _HubTile(
+                    icon: Icons.live_tv_outlined,
+                    title: 'Live stream settings',
+                    subtitle: 'YouTube channels and media leaders',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const StreamSettingsScreen(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 if (role?.superAdmin ?? false)
                   _HubTile(
                     icon: Icons.badge_outlined,
@@ -175,11 +203,17 @@ class _HubTile extends StatelessWidget {
 
 /// Everything of one kind the staff member manages, with New and Edit.
 class AdminListScreen extends StatefulWidget {
-  const AdminListScreen({required this.kind, this.rulesOnly = false, super.key})
-    : assert(!rulesOnly || kind == ContentKind.ministries);
+  const AdminListScreen({
+    required this.kind,
+    this.rulesOnly = false,
+    this.leadersOnly = false,
+    super.key,
+  }) : assert(!(rulesOnly && leadersOnly)),
+       assert(!(rulesOnly || leadersOnly) || kind == ContentKind.ministries);
 
   final ContentKind kind;
   final bool rulesOnly;
+  final bool leadersOnly;
 
   @override
   State<AdminListScreen> createState() => _AdminListScreenState();
@@ -199,7 +233,12 @@ class _AdminListScreenState extends State<AdminListScreen> {
     final state = CccScope.of(context);
     final admin = state.staff.source;
     final role = state.staff.role;
-    if (admin == null || (!widget.rulesOnly && role == null)) return;
+    if (admin == null || (!widget.rulesOnly && role == null)) {
+      setState(
+        () => error = 'Sign in with a staff account to manage church content.',
+      );
+      return;
+    }
     setState(() => error = null);
     try {
       final found = widget.rulesOnly
@@ -222,6 +261,14 @@ class _AdminListScreenState extends State<AdminListScreen> {
   }
 
   Future<void> _open({String? id}) async {
+    if (widget.leadersOnly) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => MinistryEditor(id: id!, leadersOnly: true),
+        ),
+      );
+      return;
+    }
     if (widget.rulesOnly) {
       // The list may include a ministry assigned since this account opened.
       await CccScope.of(context).staff.refreshRuleMinistries();
@@ -243,7 +290,7 @@ class _AdminListScreenState extends State<AdminListScreen> {
     final rows = this.rows;
     final bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
-      floatingActionButton: widget.rulesOnly
+      floatingActionButton: widget.rulesOnly || widget.leadersOnly
           ? null
           : Padding(
               padding: EdgeInsets.only(bottom: bottom > 0 ? 0 : 8),
@@ -263,7 +310,11 @@ class _AdminListScreenState extends State<AdminListScreen> {
       body: Column(
         children: [
           DetailsHeader(
-            title: widget.rulesOnly ? 'Membership requirements' : kind.title,
+            title: widget.leadersOnly
+                ? 'Ministry leaders'
+                : widget.rulesOnly
+                ? 'Membership requirements'
+                : kind.title,
           ),
           Expanded(
             child: RefreshIndicator(
@@ -278,7 +329,9 @@ class _AdminListScreenState extends State<AdminListScreen> {
                     const SkeletonList(label: 'Loading', count: 3)
                   else if (rows.isEmpty)
                     _Message(
-                      text: widget.rulesOnly
+                      text: widget.leadersOnly
+                          ? 'Add a ministry under Ministries, then appoint its leaders here.'
+                          : widget.rulesOnly
                           ? 'No ministries to manage. Ask church staff to add you as a leader.'
                           : 'Nothing here yet. Add the first ${kind.noun}.',
                     )

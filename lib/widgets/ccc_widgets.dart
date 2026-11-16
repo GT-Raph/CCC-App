@@ -769,17 +769,20 @@ class _NavItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              // Shrinks rather than wrapping with very large text sizes.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                    height: 1,
-                    color: Color.lerp(p.textMuted, p.text, t),
+              // Shrinks rather than wrapping or spilling out of the bar
+              // with very large text sizes.
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                      height: 1,
+                      color: Color.lerp(p.textMuted, p.text, t),
+                    ),
                   ),
                 ),
               ),
